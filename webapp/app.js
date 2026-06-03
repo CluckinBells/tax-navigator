@@ -11,7 +11,7 @@ const $ = (id) => document.getElementById(id);
 // Объявлен в начале файла, т.к. используется в verifyProWithBackend() при инициализации.
 const BACKEND_URL = 'https://your-bot-backend.example.com';
 // Адрес страницы политики конфиденциальности (тот же домен, где выложена статика).
-const PRIVACY_URL = 'https://your-domain.example.com/privacy.html';
+const PRIVACY_URL = 'https://cluckinbells.github.io/tax-navigator/landing/privacy.html';
 
 // --- Инициализация Telegram ---
 let isPro = false;
