@@ -74,6 +74,7 @@ img, svg { display: block; }
 .btn--lg { --pad-y: 15px; --pad-x: 28px; font-size: 16px; border-radius: 14px; }
 .btn--sm { --pad-y: 9px; --pad-x: 16px; font-size: 14px; }
 .btn--block { width: 100%; }
+.tg-ico { flex: none; margin-right: -2px; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
