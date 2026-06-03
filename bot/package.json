@@ -1,0 +1,14 @@
+{
+  "name": "tax-navigator-bot",
+  "version": "0.1.0",
+  "description": "Бэкенд бота: Telegram Stars оплата + выдача Pro",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,11 @@
+{
+  "name": "tax-navigator",
+  "version": "0.1.0",
+  "description": "Налоговый навигатор ИП 2026 — лендинг + Telegram Mini App",
+  "type": "module",
+  "scripts": {
+    "test": "node test/verify.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,16 @@
+# Состояние бота (Pro-пользователи) — не выкладывать
+bot/pro-users.json
+
+# Зависимости
+node_modules/
+
+# Временные/служебные файлы
+*.pyc
+__pycache__/
+_*.txt
+_*.py
+.DS_Store
+Thumbs.db
+
+# Локальные настройки превью
+.claude/launch.json

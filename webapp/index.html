@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Налоговый навигатор ИП 2026</title>
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Заголовок -->
+    <header class="head">
+      <h1>Налоговый навигатор</h1>
+      <p>Сравнение режимов ИП · 2026</p>
+    </header>
+
+    <!-- Форма ввода -->
+    <section class="card">
+      <div class="f">
+        <label for="revenue">Выручка за год, ₽</label>
+        <input type="text" inputmode="numeric" id="revenue" value="5 000 000" />
+      </div>
+      <div class="f">
+        <label for="expenses">Расходы за год, ₽</label>
+        <input type="text" inputmode="numeric" id="expenses" value="2 000 000" />
+      </div>
+      <div class="f">
+        <label>Доля выручки от физлиц: <b id="indivOut">30%</b></label>
+        <input type="range" id="individualsShare" min="0" max="100" value="30" />
+      </div>
+      <div class="f">
+        <label for="employees">Работников</label>
+        <input type="number" id="employees" min="0" value="0" />
+      </div>
+      <div class="f-row">
+        <button class="chip" id="ausnRegion" data-on="true" type="button">Регион с АУСН: <span>Да</span></button>
+        <button class="chip" id="patentAvailable" data-on="true" type="button">Патент: <span>Да</span></button>
+      </div>
+      <div class="f" id="patentCostField">
+        <label for="patentCost">Стоимость патента, ₽</label>
+        <input type="text" inputmode="numeric" id="patentCost" value="30 000" />
+      </div>
+      <p class="field-warn" id="expenseWarn" hidden>⚠️ Расходы больше выручки — проверьте суммы.</p>
+      <div class="privacy-line">🔒 Цифры считаются на вашем устройстве и не отправляются на сервер.</div>
+    </section>
+
+    <!-- Лучший режим -->
+    <section class="best" id="bestCard">
+      <div class="best__label">Лучший режим</div>
+      <div class="best__name" id="bestName">—</div>
+      <div class="best__total" id="bestTotal">—</div>
+      <div class="best__save" id="bestSave"></div>
+    </section>
+
+    <!-- Сравнение всех режимов -->
+    <section class="card">
+      <div class="card__title">Все режимы <span class="card__hint">меньше — лучше</span></div>
+      <div id="compareList" class="compare"></div>
+    </section>
+
+    <!-- PRO: вердикт словами -->
+    <section class="card pro-section" id="proVerdict">
+      <div class="card__title">
+        Вывод и рекомендация
+        <span class="pro-badge" id="verdictBadge">PRO</span>
+      </div>
+      <div id="verdictContent"></div>
+    </section>
+
+    <!-- PRO: детальная разбивка -->
+    <section class="card pro-section" id="proDetail">
+      <div class="card__title">
+        Из чего складывается нагрузка
+        <span class="pro-badge" id="detailBadge">PRO</span>
+      </div>
+      <div id="detailContent"></div>
+    </section>
+
+    <!-- PRO: сценарии роста -->
+    <section class="card pro-section" id="proScenarios">
+      <div class="card__title">
+        Сценарии роста и точки перелома
+        <span class="pro-badge" id="scenBadge">PRO</span>
+      </div>
+      <div id="scenContent"></div>
+    </section>
+
+    <!-- PRO: налоговый календарь -->
+    <section class="card pro-section" id="proCalendar">
+      <div class="card__title">
+        Налоговый календарь 2026
+        <span class="pro-badge" id="calBadge">PRO</span>
+      </div>
+      <div id="calContent"></div>
+    </section>
+
+    <p class="disclaimer">
+      Расчёт упрощён, носит справочный характер и не является индивидуальной налоговой консультацией.
+      Не учитывает торговый сбор, региональные льготы и специфику видов деятельности.
+      <a href="#" id="privacyLink" class="disclaimer__link">Политика конфиденциальности</a>
+    </p>
+
+    <div class="bottom-space"></div>
+  </div>
+
+  <!-- Pro paywall (модалка) -->
+  <div class="sheet" id="paywall" hidden>
+    <div class="sheet__backdrop" data-close></div>
+    <div class="sheet__panel">
+      <div class="sheet__grip"></div>
+      <div class="sheet__icon">🔓</div>
+      <h2>Откройте Pro-разбор</h2>
+      <ul class="sheet__list">
+        <li>🧭 Личная рекомендация словами: что выбрать и почему</li>
+        <li>📊 Разбивка нагрузки с графиками: налог, взносы, НДС</li>
+        <li>📈 Сценарии роста и график налоговой кривой</li>
+        <li>🎯 Точки перелома — когда менять режим</li>
+        <li>📄 PDF-отчёт с логотипом для бухгалтера</li>
+        <li>🔄 Обновления ставок и лимитов весь год</li>
+      </ul>
+      <button class="btn btn--primary" id="buyProBtn">Оформить Pro — 1490 ₽ / год</button>
+      <button class="btn btn--text" data-close>Позже</button>
+      <p class="sheet__note">≈ 124 ₽ в месяц. Оплата в Telegram, доступ на год. Окупается одной верной сменой режима.</p>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

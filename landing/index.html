@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Налоговый навигатор ИП 2026 — выбери выгодный режим за 1 минуту</title>
+  <meta name="description" content="Калькулятор для ИП: сравнивает НПД, УСН, ПСН и АУСН с учётом реформы НДС 2026 и показывает, сколько можно сэкономить. Расчёт за минуту прямо в Telegram." />
+  <meta property="og:title" content="Налоговый навигатор ИП 2026" />
+  <meta property="og:description" content="Сравни 6 налоговых режимов и сэкономь сотни тысяч рублей в год. С учётом реформы НДС 2026." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#6366f1" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <meta property="og:image" content="assets/icon-512.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Шрифт грузится не блокируя рендер: страница работает даже без интернета (важно для Telegram) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== Навигация ===== -->
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a href="#top" class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 7h4v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>Налоговый навигатор</span>
+      </a>
+      <nav class="nav__links">
+        <a href="#calc">Калькулятор</a>
+        <a href="#features">Возможности</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#faq">Вопросы</a>
+      </nav>
+      <a href="#calc" class="btn btn--primary btn--sm">Рассчитать бесплатно</a>
+    </div>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="top">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="container hero__inner">
+      <div class="hero__content">
+        <span class="badge">🔥 Обновлено под реформу НДС 2026</span>
+        <h1 class="hero__title">
+          Узнайте, на каком налоговом режиме ИП <span class="grad">переплачивает</span> — за 1 минуту
+        </h1>
+        <p class="hero__subtitle">
+          Калькулятор сравнивает 6 режимов — НПД, УСН «Доходы», УСН «Доходы-Расходы», патент и АУСН — и показывает,
+          сколько вы теряете на неправильном выборе. С учётом новых лимитов и ставок НДС 2026 года.
+        </p>
+        <div class="hero__cta">
+          <a href="#calc" class="btn btn--primary btn--lg">Рассчитать мой режим →</a>
+          <a href="#pricing" class="btn btn--ghost btn--lg">Тарифы и Pro</a>
+        </div>
+        <ul class="hero__trust">
+          <li><b>6</b> налоговых режимов</li>
+          <li><b>2026</b> актуальные ставки</li>
+          <li><b>0 ₽</b> базовый расчёт</li>
+        </ul>
+      </div>
+
+      <!-- Превью карточки результата -->
+      <div class="hero__preview" aria-hidden="true">
+        <div class="rcard rcard--float">
+          <div class="rcard__head">
+            <span class="rcard__label">Лучший режим для вас</span>
+            <span class="pill pill--win">выгодно</span>
+          </div>
+          <div class="rcard__big">ПСН (патент)</div>
+          <div class="rcard__sum">104 390 ₽ <span>налогов в год</span></div>
+          <div class="rcard__save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Экономия 495 610 ₽ против худшего варианта
+          </div>
+          <div class="rcard__bars">
+            <div class="bar"><span class="bar__name">ПСН</span><div class="bar__track"><i style="width:17%"></i></div><span class="bar__val">104k</span></div>
+            <div class="bar"><span class="bar__name">УСН 6%</span><div class="bar__track"><i style="width:50%"></i></div><span class="bar__val">300k</span></div>
+            <div class="bar"><span class="bar__name">АУСН 8%</span><div class="bar__track"><i style="width:67%"></i></div><span class="bar__val">400k</span></div>
+            <div class="bar"><span class="bar__name">УСН 15%</span><div class="bar__track"><i style="width:92%"></i></div><span class="bar__val">554k</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Проблема / решение ===== -->
+  <section class="section problem">
+    <div class="container">
+      <div class="problem__grid">
+        <div class="problem__col problem__col--bad">
+          <h3>Как сейчас</h3>
+          <ul>
+            <li>Гуглишь ставки и лимиты, путаешься в реформе НДС</li>
+            <li>Считаешь налог в уме или в кривой табличке</li>
+            <li>Узнаёшь о переплате только у бухгалтера в конце года</li>
+            <li>Не понимаешь, когда пора менять режим при росте</li>
+          </ul>
+        </div>
+        <div class="problem__arrow" aria-hidden="true">→</div>
+        <div class="problem__col problem__col--good">
+          <h3>С навигатором</h3>
+          <ul>
+            <li>Вводишь выручку и расходы — видишь все режимы сразу</li>
+            <li>Сервис сам подсвечивает самый выгодный вариант</li>
+            <li>Видишь точную сумму экономии в рублях за год</li>
+            <li>Сценарии роста показывают, когда сменить режим</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Живой калькулятор ===== -->
+  <section class="section calc" id="calc">
+    <div class="container">
+      <div class="section__head">
+        <span class="eyebrow">Бесплатный расчёт</span>
+        <h2>Посчитайте свой налог прямо сейчас</h2>
+        <p>Заполните поля — результат появится мгновенно. Без регистрации.</p>
+        <div class="calc__privacy">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l7 4v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Ваши цифры не покидают устройство — расчёт идёт прямо в браузере
+        </div>
+      </div>
+
+      <div class="calc__layout">
+        <!-- Форма -->
+        <form class="calc__form panel" id="calcForm" autocomplete="off">
+          <div class="field">
+            <label for="revenue">Выручка за год, ₽</label>
+            <input type="text" inputmode="numeric" id="revenue" value="5 000 000" />
+          </div>
+          <div class="field">
+            <label for="expenses">Расходы за год, ₽ <span class="hint">документально подтверждённые</span></label>
+            <input type="text" inputmode="numeric" id="expenses" value="2 000 000" />
+          </div>
+          <div class="field">
+            <label for="individualsShare">Доля выручки от физлиц: <b id="indivOut">30%</b> <span class="hint">для НПД</span></label>
+            <input type="range" id="individualsShare" min="0" max="100" value="30" />
+          </div>
+          <div class="field">
+            <label for="employees">Количество работников</label>
+            <input type="number" id="employees" min="0" value="0" />
+          </div>
+          <div class="field field--row">
+            <label class="toggle">
+              <span class="toggle__label">Регион с АУСН?</span>
+              <span class="switch"><input type="checkbox" id="ausnRegion" checked /><span></span></span>
+            </label>
+            <label class="toggle">
+              <span class="toggle__label">Доступен патент?</span>
+              <span class="switch"><input type="checkbox" id="patentAvailable" checked /><span></span></span>
+            </label>
+          </div>
+          <div class="field" id="patentCostField">
+            <label for="patentCost">Стоимость патента в регионе, ₽ <span class="hint">с сайта ФНС</span></label>
+            <input type="text" inputmode="numeric" id="patentCost" value="30 000" />
+          </div>
+          <p class="field-warn" id="expenseWarn" hidden>⚠️ Расходы больше выручки — проверьте суммы.</p>
+        </form>
+
+        <!-- Результат -->
+        <div class="calc__result">
+          <div class="rcard rcard--main" id="bestCard">
+            <div class="rcard__head">
+              <span class="rcard__label">Лучший режим для вас</span>
+              <span class="pill pill--win" id="bestPill">выгодно</span>
+            </div>
+            <div class="rcard__big" id="bestName">—</div>
+            <div class="rcard__sum"><span id="bestTotal">—</span></div>
+            <div class="rcard__save" id="bestSave"></div>
+            <div class="rcard__rate" id="bestRate"></div>
+          </div>
+
+          <div class="panel compare">
+            <div class="compare__head">
+              <h4>Сравнение всех режимов</h4>
+              <span class="compare__hint">меньше — лучше</span>
+            </div>
+            <div class="compare__list" id="compareList"></div>
+          </div>
+
+          <!-- Pro-замок -->
+          <div class="panel prolock" id="prolock">
+            <div class="prolock__blur" aria-hidden="true">
+              <div class="prolock__row"><span>Детальная разбивка налога и взносов</span><b>•••</b></div>
+              <div class="prolock__row"><span>Сценарии роста на 2 года вперёд</span><b>•••</b></div>
+              <div class="prolock__row"><span>Точки перелома: когда менять режим</span><b>•••</b></div>
+              <div class="prolock__row"><span>PDF-отчёт для бухгалтера</span><b>•••</b></div>
+            </div>
+            <div class="prolock__overlay">
+              <div class="prolock__lock">🔒</div>
+              <h4>Откройте полный разбор в Pro</h4>
+              <p>Детализация, сценарии роста, точки перелома и PDF-отчёт.</p>
+              <a href="#pricing" class="btn btn--primary">Что входит в Pro →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="calc__disclaimer">
+        Расчёт упрощён и носит справочный характер: не учитывает торговый сбор, региональные пониженные ставки,
+        особенности отдельных видов деятельности. Не является индивидуальной налоговой консультацией.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== Возможности / Pro ===== -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="section__head">
+        <span class="eyebrow">Возможности</span>
+        <h2>Не просто калькулятор, а навигатор по налогам</h2>
+      </div>
+      <div class="features__grid">
+        <article class="feature">
+          <div class="feature__ico">⚖️</div>
+          <h3>6 режимов в одном экране</h3>
+          <p>НПД, УСН «Доходы» 6%, УСН «Доходы-Расходы» 15%, ПСН и АУСН (8% и 20%) — сразу, с подсветкой лучшего.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__ico">🧾</div>
+          <h3>Реформа НДС 2026</h3>
+          <p>Учитывает новый порог НДС 20 млн ₽ и льготные ставки 5% / 7% для УСН — то, что ломает старые расчёты.</p>
+        </article>
+        <article class="feature feature--pro">
+          <span class="feature__tag">PRO</span>
+          <div class="feature__ico">📈</div>
+          <h3>Сценарии роста</h3>
+          <p>Сравните «сейчас / через год / через 2» и заранее увидьте, на каком обороте выгодно сменить режим.</p>
+        </article>
+        <article class="feature feature--pro">
+          <span class="feature__tag">PRO</span>
+          <div class="feature__ico">🎯</div>
+          <h3>Точки перелома</h3>
+          <p>Сервис находит уровень выручки, где один режим становится дороже другого, и подсказывает момент перехода.</p>
+        </article>
+        <article class="feature feature--pro">
+          <span class="feature__tag">PRO</span>
+          <div class="feature__ico">📄</div>
+          <h3>PDF-отчёт</h3>
+          <p>Готовый расчёт со всеми цифрами — можно сохранить, отправить бухгалтеру или приложить к решению.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__ico">⚡</div>
+          <h3>Прямо в Telegram</h3>
+          <p>Ничего не нужно устанавливать. Открыли мини-приложение, посчитали, закрыли. Всегда под рукой.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Тарифы ===== -->
+  <section class="section pricing" id="pricing">
+    <div class="container">
+      <div class="section__head">
+        <span class="eyebrow">Тарифы</span>
+        <h2>Начните бесплатно, откройте Pro на год</h2>
+        <p>Налоги пересматривают раз в год — и раз в год мы обновляем все ставки и лимиты под новый закон.</p>
+      </div>
+      <div class="pricing__grid">
+        <div class="plan">
+          <div class="plan__name">Бесплатно</div>
+          <div class="plan__price">0 ₽</div>
+          <div class="plan__desc">Базовый расчёт для быстрой проверки</div>
+          <ul class="plan__list">
+            <li>✓ Сравнение всех 6 режимов</li>
+            <li>✓ Подсветка лучшего варианта</li>
+            <li>✓ Сумма экономии за год</li>
+            <li class="muted">— Детальная разбивка</li>
+            <li class="muted">— Сценарии роста</li>
+            <li class="muted">— PDF-отчёт</li>
+          </ul>
+          <a href="#calc" class="btn btn--ghost btn--block">Попробовать</a>
+        </div>
+
+        <div class="plan plan--featured">
+          <div class="plan__ribbon">Выгодно</div>
+          <div class="plan__name">Pro</div>
+          <div class="plan__price">1490 ₽ <span class="plan__period">/ год</span></div>
+          <div class="plan__desc">Полный разбор и инструменты планирования</div>
+          <ul class="plan__list">
+            <li>✓ Всё из бесплатного тарифа</li>
+            <li>✓ Детальная разбивка налога и взносов</li>
+            <li>✓ Сценарии роста на 2 года</li>
+            <li>✓ Точки перелома по выручке</li>
+            <li>✓ PDF-отчёт для бухгалтера</li>
+            <li>✓ Обновления ставок и лимитов весь год</li>
+          </ul>
+          <a href="#calc" class="btn btn--primary btn--block">Оформить Pro на год</a>
+          <div class="plan__note">≈ 124 ₽ в месяц. Дешевле одной ошибки в выборе режима.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section class="section faq" id="faq">
+    <div class="container container--narrow">
+      <div class="section__head">
+        <span class="eyebrow">Вопросы и ответы</span>
+        <h2>Коротко о главном</h2>
+      </div>
+      <div class="faq__list" id="faqList">
+        <details class="faq__item">
+          <summary>Насколько точен расчёт?</summary>
+          <p>Калькулятор использует актуальные ставки и лимиты 2026 года из Налогового кодекса и ФЗ-425. Расчёт упрощён для быстрой оценки и не заменяет консультацию бухгалтера: он не учитывает торговый сбор, региональные пониженные ставки и специфику отдельных видов деятельности.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Что такое реформа НДС 2026 и при чём тут УСН?</summary>
+          <p>С 2026 года порог, при котором ИП на УСН обязан платить НДС, снижен до 20 млн ₽. Появились льготные ставки 5% и 7% без вычетов. Многие старые калькуляторы это не учитывают — наш учитывает.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Чем отличается Pro от бесплатной версии?</summary>
+          <p>Бесплатно вы видите сравнение режимов и лучший вариант. Pro добавляет детальную разбивку (налог, взносы, НДС по отдельности), сценарии роста, точки перелома и выгрузку PDF-отчёта.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Как оплатить?</summary>
+          <p>Оплата проходит прямо в Telegram — быстро и безопасно. После оплаты Pro-функции открываются сразу, без кодов и ожидания.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Мои данные сохраняются?</summary>
+          <p>Расчёт выполняется на вашем устройстве. Мы не собираем выручку и расходы на сервер — вводимые цифры остаются у вас.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Финальный CTA ===== -->
+  <section class="section cta-final">
+    <div class="container">
+      <div class="cta-final__box">
+        <h2>Перестаньте переплачивать налоги вслепую</h2>
+        <p>Один расчёт может окупить Pro в сотни раз. Проверьте свой режим прямо сейчас.</p>
+        <a href="#calc" class="btn btn--light btn--lg">Рассчитать бесплатно →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <div class="brand brand--footer">
+          <span class="brand__mark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 7h4v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>Налоговый навигатор ИП 2026</span>
+        </div>
+        <p>Справочный сервис для сравнения налоговых режимов ИП. Версия 2.1 · 2026.</p>
+      </div>
+      <div class="footer__links">
+        <a href="#calc">Калькулятор</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#faq">Вопросы</a>
+        <a href="privacy.html">Конфиденциальность</a>
+      </div>
+    </div>
+    <div class="container">
+      <p class="footer__disclaimer">
+        Сервис не является индивидуальной налоговой консультацией. Перед принятием решения о смене режима
+        проконсультируйтесь с бухгалтером или налоговым консультантом. Основано на НК РФ (гл. 26.2, 26.5, 26.7, 26.8)
+        и ФЗ от 28.11.2025 № 425-ФЗ.
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
