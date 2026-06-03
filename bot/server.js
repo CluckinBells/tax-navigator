@@ -17,11 +17,10 @@ import crypto from 'node:crypto';
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://example.com/webapp/index.html';
 const PORT = process.env.PORT || 3000;
-// Цена годового Pro в Telegram Stars (XTR). Ориентир: 1490 ₽/год ≈ 750 ⭐
+// Цена Pro в Telegram Stars (XTR). Ориентир: 1990 ₽ ≈ 1000 ⭐
 // (курс Stars плавает — уточните актуальный в @PremiumBot и поменяйте PRO_PRICE_STARS).
-const PRO_PRICE_STARS = Number(process.env.PRO_PRICE_STARS || 750);
-// Срок действия Pro в днях (годовая подписка). Бот выдаёт доступ до этой даты.
-const PRO_DAYS = Number(process.env.PRO_DAYS || 365);
+// Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
+const PRO_PRICE_STARS = Number(process.env.PRO_PRICE_STARS || 1000);
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 if (!BOT_TOKEN) {
@@ -32,36 +31,20 @@ if (!BOT_TOKEN) {
 
 // --- Хранилище Pro-статусов ---
 // Для прода замените на БД (SQLite/Postgres). Здесь — простой JSON-файл.
-// Храним { userId: expiryTimestampMs } — годовая подписка, у каждого своя дата окончания.
+// Pro — разовая покупка навсегда: храним просто список userId, кто оплатил.
 const DB_PATH = new URL('./pro-users.json', import.meta.url);
-let proUsers = {};
+let proUsers = new Set();
 try {
   const raw = JSON.parse(readFileSync(DB_PATH, 'utf8'));
-  // Совместимость со старым форматом (массив id = бессрочный доступ).
-  if (Array.isArray(raw)) { for (const id of raw) proUsers[String(id)] = Infinity; }
-  else proUsers = raw;
+  // Совместимость со старым форматом (объект {id: дата} → берём ключи как бессрочный доступ).
+  if (Array.isArray(raw)) proUsers = new Set(raw.map(String));
+  else proUsers = new Set(Object.keys(raw));
 } catch (_) {}
 function saveDb() {
-  try { writeFileSync(DB_PATH, JSON.stringify(proUsers)); } catch (_) {}
+  try { writeFileSync(DB_PATH, JSON.stringify([...proUsers])); } catch (_) {}
 }
-function grantPro(userId) {
-  // Продлеваем на PRO_DAYS от большего из (сейчас, текущая дата окончания) — корректное продление.
-  const now = Date.now();
-  const current = proUsers[String(userId)] || 0;
-  const base = current > now ? current : now;
-  proUsers[String(userId)] = base + PRO_DAYS * 24 * 60 * 60 * 1000;
-  saveDb();
-}
-function isPro(userId) {
-  const exp = proUsers[String(userId)];
-  return exp != null && exp > Date.now();
-}
-function proUntil(userId) {
-  const exp = proUsers[String(userId)];
-  if (exp == null || exp <= Date.now()) return null;
-  if (exp === Infinity) return 'бессрочно';
-  return new Date(exp).toLocaleDateString('ru-RU');
-}
+function grantPro(userId) { proUsers.add(String(userId)); saveDb(); }
+function isPro(userId) { return proUsers.has(String(userId)); }
 
 // --- Telegram Bot API helper ---
 async function tg(method, body) {
@@ -108,7 +91,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/me' && req.method === 'POST') {
     const user = verifyInitData(body.initData);
     if (!user) return json(res, 401, { error: 'bad initData' });
-    return json(res, 200, { userId: user.id, isPro: isPro(user.id), proUntil: proUntil(user.id) });
+    return json(res, 200, { userId: user.id, isPro: isPro(user.id) });
   }
 
   // 2) Mini App просит ссылку на оплату Pro
@@ -118,8 +101,8 @@ const server = http.createServer(async (req, res) => {
     if (isPro(user.id)) return json(res, 200, { alreadyPro: true });
 
     const resp = await tg('createInvoiceLink', {
-      title: 'Налоговый навигатор Pro — год',
-      description: 'Доступ на год: детальная разбивка, сценарии роста, точки перелома, PDF-отчёт и обновления ставок весь год.',
+      title: 'Налоговый навигатор Pro',
+      description: 'Разовый доступ навсегда: детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.',
       payload: `pro_${user.id}_${Date.now()}`,
       currency: 'XTR', // Telegram Stars
       prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_STARS }],
@@ -158,14 +141,13 @@ async function handleUpdate(update) {
     return;
   }
 
-  // successful_payment — оплата прошла, выдаём Pro на год
+  // successful_payment — оплата прошла, выдаём Pro навсегда
   if (update.message?.successful_payment) {
     const userId = update.message.from.id;
     grantPro(userId);
-    const until = proUntil(userId);
     await tg('sendMessage', {
       chat_id: update.message.chat.id,
-      text: `🎉 Pro активирован до ${until}! Открыты детальная разбивка, сценарии роста, точки перелома и PDF-отчёт. Ближе к дате окончания напомним о продлении.`,
+      text: '🎉 Pro активирован навсегда! Открыты детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.',
       reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть Pro', web_app: { url: `${WEBAPP_URL}?pro=1` } }]] },
     });
     return;
@@ -189,7 +171,7 @@ function json(res, code, obj) {
 server.listen(PORT, () => {
   console.log(`✅ Бот-бэкенд слушает порт ${PORT}`);
   console.log(`   Mini App: ${WEBAPP_URL}`);
-  console.log(`   Цена Pro: ${PRO_PRICE_STARS} ⭐ за ${PRO_DAYS} дней (годовая подписка)`);
+  console.log(`   Цена Pro: ${PRO_PRICE_STARS} ⭐ (разовая покупка, навсегда)`);
   console.log(`\n   Не забудьте установить вебхук:`);
   console.log(`   curl "${API}/setWebhook?url=https://ВАШ_ДОМЕН/webhook/${BOT_TOKEN}"`);
 });
