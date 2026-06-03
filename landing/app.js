@@ -4,6 +4,23 @@ import { formatMoney, formatPercent, parseMoney } from '../shared/format.js';
 
 const $ = (id) => document.getElementById(id);
 
+// --- Подсказки к полям (для новичков) ---
+// Тап по «?» открывает аккуратный поповер с объяснением.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.help');
+  // Закрытие открытого поповера при клике вне его
+  const open = document.querySelector('.help-pop');
+  if (open && !e.target.closest('.help-pop') && !btn) { open.remove(); return; }
+  if (!btn) return;
+  e.preventDefault();
+  if (open) open.remove();
+  const pop = document.createElement('div');
+  pop.className = 'help-pop';
+  pop.innerHTML = `<button class="help-pop__x" aria-label="Закрыть">×</button><p>${btn.getAttribute('data-help') || ''}</p>`;
+  btn.insertAdjacentElement('afterend', pop);
+  pop.querySelector('.help-pop__x').addEventListener('click', () => pop.remove());
+});
+
 const els = {
   revenue: $('revenue'),
   expenses: $('expenses'),

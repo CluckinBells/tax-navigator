@@ -160,9 +160,24 @@ img, svg { display: block; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
 .calc__layout { display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; align-items: start; }
 .calc__form { padding: 28px; display: grid; gap: 18px; }
-.field { display: grid; gap: 8px; }
+.field { display: grid; gap: 8px; position: relative; }
 .field label { font-size: 14px; font-weight: 700; color: var(--ink); }
 .field .hint { font-weight: 500; color: var(--ink-mute); font-size: 12.5px; }
+
+/* Вводная подсказка над формой */
+.form-intro { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin: 0; padding: 12px 14px; background: var(--surface-2); border-radius: 12px; }
+/* Кнопка-подсказка «?» */
+.help { display: inline-grid; place-items: center; width: 19px; height: 19px; vertical-align: middle; border-radius: 50%; border: none; background: var(--surface-3); color: var(--ink-soft); font-size: 12px; font-weight: 800; cursor: pointer; padding: 0; line-height: 1; margin-left: 4px; font-family: inherit; transition: .15s; }
+.help:hover { background: var(--brand); color: #fff; }
+.chip-help { display: flex; gap: 10px; flex-wrap: wrap; margin: 0; position: relative; }
+.chip-help .help { width: auto; height: auto; border-radius: 999px; padding: 6px 13px; font-size: 13px; font-weight: 600; background: var(--surface-2); color: var(--brand-ink); }
+.chip-help .help:hover { background: var(--brand); color: #fff; }
+/* Поповер с текстом подсказки */
+.help-pop { position: absolute; z-index: 20; left: 0; right: 0; margin-top: 8px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px 38px 14px 16px; box-shadow: var(--shadow); animation: popin .15s ease; }
+.help-pop p { font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); margin: 0; }
+.help-pop__x { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--ink-mute); font-size: 22px; line-height: 1; cursor: pointer; padding: 0; }
+.help-pop__x:hover { color: var(--ink); }
+@keyframes popin { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .field input[type=text], .field input[type=number] {
   font-family: inherit; font-size: 17px; font-weight: 600; color: var(--ink);
   padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);

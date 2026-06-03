@@ -137,20 +137,21 @@
       <div class="calc__layout">
         <!-- Форма -->
         <form class="calc__form panel" id="calcForm" autocomplete="off">
+          <p class="form-intro">Заполните выручку и расходы — этого достаточно. Остальное можно не трогать, если не уверены. Возле полей есть подсказки «?».</p>
           <div class="field">
-            <label for="revenue">Выручка за год, ₽</label>
+            <label for="revenue">Выручка за год, ₽ <button class="help" type="button" data-help="Сколько денег вы получили от клиентов за год — вся сумма поступлений, до вычета налогов и расходов. Например: продали услуг на 3 000 000 ₽ — это и есть выручка.">?</button></label>
             <input type="text" inputmode="numeric" id="revenue" value="5 000 000" />
           </div>
           <div class="field">
-            <label for="expenses">Расходы за год, ₽ <span class="hint">документально подтверждённые</span></label>
+            <label for="expenses">Расходы за год, ₽ <button class="help" type="button" data-help="Сколько вы потратили на бизнес за год: закупки, аренда, материалы. Важно только для УСН «Доходы-Расходы». Если не ведёте учёт расходов — поставьте 0.">?</button></label>
             <input type="text" inputmode="numeric" id="expenses" value="2 000 000" />
           </div>
           <div class="field">
-            <label for="individualsShare">Доля выручки от физлиц: <b id="indivOut">30%</b> <span class="hint">для НПД</span></label>
+            <label for="individualsShare">Доля выручки от физлиц: <b id="indivOut">30%</b> <button class="help" type="button" data-help="Какая часть денег приходит от обычных людей, а не от компаний и ИП. Влияет только на режим для самозанятых (НПД): с физлиц налог 4%, с компаний 6%.">?</button></label>
             <input type="range" id="individualsShare" min="0" max="100" value="30" />
           </div>
           <div class="field">
-            <label for="employees">Количество работников</label>
+            <label for="employees">Количество работников <button class="help" type="button" data-help="Сколько человек у вас официально оформлено по трудовому договору. Работаете один — оставьте 0. Влияет на доступность режимов и размер вычета взносов.">?</button></label>
             <input type="number" id="employees" min="0" value="0" />
           </div>
           <div class="field field--row">
@@ -163,8 +164,12 @@
               <span class="switch"><input type="checkbox" id="patentAvailable" checked /><span></span></span>
             </label>
           </div>
+          <p class="chip-help">
+            <button class="help" type="button" data-help="АУСН — новый «автоматический» режим, где налог считает банк, а страховые взносы платить не нужно. Работает не во всех регионах: Москва, Подмосковье, Татарстан, Калужская область и ещё несколько. Не уверены — оставьте «Да».">Что такое АУСН?</button>
+            <button class="help" type="button" data-help="Патент (ПСН) — фиксированная плата за право работать, подходит не для всех видов деятельности. Доступен ли он вам и сколько стоит — проверьте на сайте ФНС в «калькуляторе патента». Не уверены — оставьте «Да».">Что такое патент?</button>
+          </p>
           <div class="field" id="patentCostField">
-            <label for="patentCost">Стоимость патента в регионе, ₽ <span class="hint">с сайта ФНС</span></label>
+            <label for="patentCost">Стоимость патента в регионе, ₽ <button class="help" type="button" data-help="Сколько стоит патент для вашего вида деятельности и региона. Точную сумму покажет официальный калькулятор патента на сайте ФНС: patent.nalog.ru. Это стоимость самого патента, а не налог сверху.">?</button></label>
             <input type="text" inputmode="numeric" id="patentCost" value="30 000" />
           </div>
           <p class="field-warn" id="expenseWarn" hidden>⚠️ Расходы больше выручки — проверьте суммы.</p>

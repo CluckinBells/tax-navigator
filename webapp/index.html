@@ -20,28 +20,33 @@
 
     <!-- Форма ввода -->
     <section class="card">
+      <p class="form-intro">Заполните 2 главных поля — выручку и расходы. Остальное можно не трогать, если не уверены.</p>
       <div class="f">
-        <label for="revenue">Выручка за год, ₽</label>
+        <label for="revenue">Выручка за год, ₽ <button class="help" type="button" data-help="Сколько денег вы получили от клиентов за год — вся сумма поступлений, до вычета налогов и расходов. Например: продали услуг на 3 000 000 ₽ — это и есть выручка.">?</button></label>
         <input type="text" inputmode="numeric" id="revenue" value="5 000 000" />
       </div>
       <div class="f">
-        <label for="expenses">Расходы за год, ₽</label>
+        <label for="expenses">Расходы за год, ₽ <button class="help" type="button" data-help="Сколько вы потратили на бизнес за год: закупки, аренда, материалы. Важно только для УСН «Доходы-Расходы». Если не ведёте учёт расходов — оставьте 0.">?</button></label>
         <input type="text" inputmode="numeric" id="expenses" value="2 000 000" />
       </div>
       <div class="f">
-        <label>Доля выручки от физлиц: <b id="indivOut">30%</b></label>
+        <label>Доля выручки от физлиц: <b id="indivOut">30%</b> <button class="help" type="button" data-help="Какая часть денег приходит от обычных людей (а не от компаний и ИП). Влияет только на режим для самозанятых (НПД): с физлиц налог 4%, с компаний 6%. Если продаёте в основном людям — ставьте больше.">?</button></label>
         <input type="range" id="individualsShare" min="0" max="100" value="30" />
       </div>
       <div class="f">
-        <label for="employees">Работников</label>
+        <label for="employees">Работников <button class="help" type="button" data-help="Сколько человек у вас официально оформлено по трудовому договору. Если работаете один — оставьте 0. Число влияет на доступность режимов и размер вычета.">?</button></label>
         <input type="number" id="employees" min="0" value="0" />
       </div>
       <div class="f-row">
         <button class="chip" id="ausnRegion" data-on="true" type="button">Регион с АУСН: <span>Да</span></button>
         <button class="chip" id="patentAvailable" data-on="true" type="button">Патент: <span>Да</span></button>
       </div>
+      <p class="chip-help">
+        <button class="help" type="button" data-help="АУСН — новый «автоматический» режим, где налог считает банк, а взносы платить не нужно. Работает не во всех регионах: Москва, Подмосковье, Татарстан, Калужская область и ещё несколько. Не уверены — оставьте «Да», сервис сам подскажет.">Что такое АУСН?</button>
+        <button class="help" type="button" data-help="Патент (ПСН) — фиксированная плата за право работать, подходит не для всех видов деятельности. Доступен ли он именно вам и сколько стоит — можно проверить на сайте ФНС в «калькуляторе патента». Не уверены — оставьте «Да».">Что такое патент?</button>
+      </p>
       <div class="f" id="patentCostField">
-        <label for="patentCost">Стоимость патента, ₽</label>
+        <label for="patentCost">Стоимость патента, ₽ <button class="help" type="button" data-help="Сколько стоит патент именно для вашего вида деятельности и региона. Точную сумму покажет официальный калькулятор патента на сайте ФНС: patent.nalog.ru. Это не налог, который вы платите сверху, а стоимость самого патента.">?</button></label>
         <input type="text" inputmode="numeric" id="patentCost" value="30 000" />
       </div>
       <p class="field-warn" id="expenseWarn" hidden>⚠️ Расходы больше выручки — проверьте суммы.</p>

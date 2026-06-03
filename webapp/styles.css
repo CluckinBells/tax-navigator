@@ -41,6 +41,21 @@ body {
 .card__title { font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .card__hint { font-size: 12px; color: var(--hint); font-weight: 500; }
 
+/* Вводная подсказка над формой */
+.form-intro { font-size: 13px; color: var(--hint); line-height: 1.5; margin: 0 0 16px; padding: 11px 13px; background: var(--bg-secondary); border-radius: 10px; }
+
+/* Кнопка-подсказка «?» рядом с подписью поля */
+.help {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; vertical-align: middle;
+  border-radius: 50%; border: none; background: rgba(127,127,127,.2); color: var(--text);
+  font-size: 11px; font-weight: 800; cursor: pointer; padding: 0; line-height: 1; margin-left: 3px;
+  font-family: inherit;
+}
+.help:active { transform: scale(.9); }
+/* Текстовые подсказки под чипами (АУСН / патент) */
+.chip-help { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 14px; }
+.chip-help .help { width: auto; height: auto; border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 600; background: var(--bg-secondary); color: var(--link); }
+
 /* Поля ввода */
 .f { margin-bottom: 14px; }
 .f:last-child { margin-bottom: 0; }

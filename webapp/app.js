@@ -9,6 +9,23 @@ import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
 
+// --- Подсказки к полям (для новичков) ---
+// Тап по «?» показывает простое объяснение. В Telegram — нативный попап, иначе — alert.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.help');
+  if (!btn) return;
+  e.preventDefault();
+  const text = btn.getAttribute('data-help') || '';
+  tg?.HapticFeedback?.impactOccurred?.('light');
+  if (tg?.showPopup) {
+    tg.showPopup({ title: 'Подсказка', message: text, buttons: [{ type: 'ok' }] });
+  } else if (tg?.showAlert) {
+    tg.showAlert(text);
+  } else {
+    alert(text);
+  }
+});
+
 // Адрес бэкенда (бота). Подставьте свой при деплое.
 // Объявлен в начале файла, т.к. используется в verifyProWithBackend() при инициализации.
 const BACKEND_URL = 'https://your-bot-backend.example.com';
