@@ -26,9 +26,12 @@ if (tg) {
   verifyProWithBackend();
 }
 
+// Бэкенд считается настроенным, только если адрес заменён с заглушки на реальный.
+const BACKEND_READY = !BACKEND_URL.includes('example.com');
+
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
 async function verifyProWithBackend() {
-  if (!tg?.initData) return;
+  if (!tg?.initData || !BACKEND_READY) return; // на Этапе 1 (без сервера) не дёргаем сеть
   try {
     const res = await fetch(`${BACKEND_URL}/me`, {
       method: 'POST',
@@ -542,6 +545,11 @@ $('buyProBtn').addEventListener('click', async () => {
   if (!tg) {
     // Режим разработки в браузере — просто включаем Pro для демонстрации.
     unlockPro();
+    return;
+  }
+  if (!BACKEND_READY) {
+    // Этап 1: сервер оплаты ещё не подключён — сообщаем вежливо, без сетевой ошибки.
+    tg.showAlert?.('Оплата Pro скоро откроется. Следите за обновлениями бота!');
     return;
   }
   try {
