@@ -195,5 +195,14 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 .sheet__list { list-style: none; display: grid; gap: 11px; margin-bottom: 20px; }
 .sheet__list li { font-size: 14.5px; font-weight: 500; }
 .sheet__note { text-align: center; font-size: 12.5px; color: var(--hint); margin-top: 12px; }
+
+/* Активация по коду доступа */
+.code-box { margin: 4px 0 6px; display: grid; gap: 10px; }
+.code-box[hidden] { display: none; }
+.code-box input { width: 100%; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 16px; font-weight: 700; letter-spacing: 1px; text-align: center; text-transform: uppercase; padding: 13px 14px; border: 1.5px solid var(--button); border-radius: 11px; background: var(--bg-secondary); color: var(--text); }
+.code-box input:focus { outline: none; background: var(--bg); }
+.code-msg { text-align: center; font-size: 13px; font-weight: 600; min-height: 18px; margin: 0; }
+.code-msg--ok { color: var(--win); }
+.code-msg--err { color: #ef4444; }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }

@@ -3,6 +3,7 @@
 
 import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js';
 import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js';
+import { validateCode } from '../shared/codes.js';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -44,12 +45,17 @@ async function verifyProWithBackend() {
   } catch (_) { /* бэкенд недоступен — остаёмся на предварительном статусе */ }
 }
 
+const PRO_CODE_KEY = 'tn_pro_code'; // сюда сохраняем активированный код доступа
+
 function detectProFromLaunch() {
   try {
     const params = new URLSearchParams(location.search);
     if (params.get('pro') === '1') return true;
     const sp = tg?.initDataUnsafe?.start_param;
     if (sp && sp.includes('pro')) return true;
+    // Ранее активированный код доступа на этом устройстве.
+    const saved = localStorage.getItem(PRO_CODE_KEY);
+    if (saved && validateCode(saved).valid) return true;
   } catch (_) {}
   // Локальный режим разработки (вне Telegram) — для отладки можно открыть ?pro=1
   return false;
@@ -578,6 +584,39 @@ function unlockPro() {
   closePaywall();
   applyProLock();
   recalc();
+}
+
+// --- Активация по коду доступа ---
+$('haveCodeBtn')?.addEventListener('click', () => {
+  const box = $('codeBox');
+  box.hidden = !box.hidden;
+  if (!box.hidden) $('codeInput')?.focus();
+});
+
+$('redeemBtn')?.addEventListener('click', redeemCode);
+$('codeInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') redeemCode(); });
+
+function redeemCode() {
+  const input = $('codeInput');
+  const msg = $('codeMsg');
+  const raw = input.value.trim();
+  if (!raw) { showCodeMsg(msg, 'Введите код доступа.', false); return; }
+  const res = validateCode(raw);
+  if (!res.valid) {
+    showCodeMsg(msg, 'Код неверный. Проверьте и попробуйте ещё раз.', false);
+    tg?.HapticFeedback?.notificationOccurred?.('error');
+    return;
+  }
+  // Сохраняем код на устройстве — Pro останется активным после перезапуска.
+  try { localStorage.setItem(PRO_CODE_KEY, raw.toUpperCase()); } catch (_) {}
+  showCodeMsg(msg, 'Код принят! Pro активирован 🎉', true);
+  tg?.HapticFeedback?.notificationOccurred?.('success');
+  setTimeout(() => { unlockPro(); }, 700);
+}
+
+function showCodeMsg(el, text, ok) {
+  el.textContent = text;
+  el.className = 'code-msg ' + (ok ? 'code-msg--ok' : 'code-msg--err');
 }
 
 // Ссылка на политику конфиденциальности — открываем во внешнем браузере Telegram.

@@ -123,8 +123,17 @@
         <li>🔄 Обновления ставок и лимитов весь год</li>
       </ul>
       <button class="btn btn--primary" id="buyProBtn">Оформить Pro — 1490 ₽ / год</button>
+
+      <!-- Активация по коду доступа -->
+      <button class="btn btn--text" id="haveCodeBtn">У меня есть код доступа</button>
+      <div class="code-box" id="codeBox" hidden>
+        <input type="text" id="codeInput" placeholder="TN26-XXXXX-XXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+        <button class="btn btn--primary btn--block" id="redeemBtn">Активировать</button>
+        <p class="code-msg" id="codeMsg"></p>
+      </div>
+
       <button class="btn btn--text" data-close>Позже</button>
-      <p class="sheet__note">≈ 124 ₽ в месяц. Оплата в Telegram, доступ на год. Окупается одной верной сменой режима.</p>
+      <p class="sheet__note">≈ 124 ₽ в месяц. Доступ на год. Окупается одной верной сменой режима.</p>
     </div>
   </div>
 
