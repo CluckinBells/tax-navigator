@@ -171,6 +171,20 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 .cal-check { color: var(--win); font-weight: 800; font-size: 15px; }
 .cal-note { font-size: 11px; color: var(--hint); margin-top: 12px; line-height: 1.5; }
 
+/* Черновик декларации УСН (Pro) */
+.decl-hint { font-size: 12.5px; color: var(--hint); line-height: 1.5; margin: 0 0 14px; }
+.decl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 10px; }
+.decl-cell { display: flex; flex-direction: column; gap: 4px; }
+.decl-cell span { font-size: 11px; font-weight: 600; color: var(--hint); }
+.decl-cell input { width: 100%; font-family: inherit; font-size: 15px; font-weight: 700; color: var(--text); padding: 9px 11px; border: 1px solid transparent; border-radius: 9px; background: var(--bg-secondary); }
+.decl-cell input:focus { outline: none; border-color: var(--button); background: var(--bg); }
+.decl-sum { background: var(--bg-secondary); border-radius: 11px; padding: 12px 14px; margin: 14px 0; display: grid; gap: 4px; }
+.decl-sum__row { display: flex; justify-content: space-between; font-size: 13px; color: var(--hint); }
+.decl-sum__row b { color: var(--text); font-weight: 700; }
+.decl-sum__row--total { border-top: 1px dashed rgba(127,127,127,.3); margin-top: 5px; padding-top: 8px; }
+.decl-sum__row--total span, .decl-sum__row--total b { color: var(--text); font-weight: 800; font-size: 14px; }
+.decl-sum__row--total b { color: var(--button); }
+
 /* Кнопки */
 .btn { width: 100%; font-family: inherit; font-size: 16px; font-weight: 700; padding: 15px; border-radius: 13px; border: none; cursor: pointer; }
 .btn--primary { background: var(--button); color: var(--button-text); }

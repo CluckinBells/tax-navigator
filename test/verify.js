@@ -2,6 +2,7 @@
 // Если все тесты зелёные — логика перенесена верно.
 
 import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline } from '../shared/engine.js';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -106,6 +107,25 @@ check('у АУСН нет взносов ИП', ausnCal.every((e) => e.kind !== 
 // прошедшая дата помечается isPast
 const pastCheck = getTaxCalendar('usn6', new Date('2026-12-31T12:00:00Z'));
 check('31 декабря все даты пройдены', pastCheck.every((e) => e.isPast), true);
+
+// --- Эталон 7: черновик декларации УСН «Доходы» (КНД 1152017) ---
+console.log('\nЭталон 7 — декларация УСН Доходы:');
+const decl = buildUsnIncomeDeclaration({
+  incomeQ: [1250000, 1250000, 1250000, 1250000],
+  contributionsQ: [0, 0, 0, 104390],
+  employees: 0,
+});
+// Сверка с калькулятором на тех же годовых данных
+const declCalc = calculateAll({ revenue: 5000000, expenses: 0, individualsShare: 0.3, employees: 0, ausnRegion: false, patentAvailable: false, patentCost: 0 });
+const declUsn6 = declCalc.regimes.find((r) => r.id === 'usn6');
+check('декларация: доход стр.113 = 5 млн', decl.section211.l113, 5000000);
+check('декларация: налог стр.133 = 300000', decl.section211.l133, 300000);
+check('декларация: вычет стр.143 = 104390', decl.section211.l143, 104390);
+check('декларация: налог к уплате = калькулятор', decl.totals.taxToPayYear, declUsn6.tax);
+check('декларация: аванс 1 кв стр.020 = 75000', decl.section11.l020, 75000);
+// с работниками — вычет ограничен 50%
+const declEmp = buildUsnIncomeDeclaration({ incomeQ: [1250000, 1250000, 1250000, 1250000], contributionsQ: [0, 0, 0, 300000], employees: 2 });
+check('декларация с работниками: вычет = 50% (150000)', declEmp.section211.l143, 150000);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);
