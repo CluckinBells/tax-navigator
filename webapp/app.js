@@ -730,11 +730,16 @@ $('buyProBtn').addEventListener('click', async () => {
     return;
   }
   try {
+    // Таймаут 20 сек — чтобы не висеть вечно на «Создаём счёт…».
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
     const res = await fetch(`${BACKEND_URL}/create-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData }),
+      signal: ctrl.signal,
     });
+    clearTimeout(timer);
     const data = await res.json().catch(() => ({}));
     // Если сервер вернул ошибку или не дал ссылку — показываем причину (а не молчим).
     if (!res.ok || data.error) {

@@ -111,8 +111,10 @@ const server = http.createServer(async (req, res) => {
 
   // 2) Mini App просит ссылку на оплату Pro (ЮKassa, рубли картой)
   if (req.url === '/create-invoice' && req.method === 'POST') {
+    console.log('[create-invoice] запрос получен, initData длина:', (body.initData || '').length);
     const user = verifyInitData(body.initData);
-    if (!user) return json(res, 401, { error: 'bad initData' });
+    if (!user) { console.log('[create-invoice] ОТКАЗ: bad initData'); return json(res, 401, { error: 'bad initData' }); }
+    console.log('[create-invoice] пользователь:', user.id);
     if (isPro(user.id)) return json(res, 200, { alreadyPro: true });
 
     const title = 'Налоговый навигатор Pro';
@@ -143,7 +145,8 @@ const server = http.createServer(async (req, res) => {
         },
       }),
     });
-    if (!resp.ok) return json(res, 500, { error: resp.description });
+    console.log('[create-invoice] ответ Telegram:', JSON.stringify(resp).slice(0, 300));
+    if (!resp.ok) return json(res, 500, { error: resp.description || 'createInvoiceLink failed' });
     return json(res, 200, { invoiceLink: resp.result });
   }
 
