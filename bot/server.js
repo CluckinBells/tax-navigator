@@ -19,6 +19,10 @@ const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://example.com/webapp/index.html';
 // Порт: Amvera ожидает 80 (см. amvera.yml containerPort). Локально можно задать PORT.
 const PORT = process.env.PORT || 80;
+// ID администратора (ваш Telegram ID) — кому доступны команды управления Pro.
+// Через запятую можно указать несколько. Узнать свой ID: напишите боту @userinfobot.
+const ADMIN_IDS = (process.env.ADMIN_IDS || '702308050').split(',').map((s) => s.trim()).filter(Boolean);
+const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
 
 // --- Оплата через ЮKassa (рубли картой прямо в Telegram) ---
 // PROVIDER_TOKEN — «платёжный токен» из @BotFather (Bot Settings → Payments → ЮKassa).
@@ -219,6 +223,43 @@ async function handleUpdate(update) {
       },
     });
     return;
+  }
+
+  // --- Админ-команды (только для ADMIN_IDS) ---
+  const msgText = update.message?.text || '';
+  const fromId = update.message?.from?.id;
+  if (msgText.startsWith('/') && isAdmin(fromId)) {
+    const chatId = update.message.chat.id;
+    const [cmd, arg] = msgText.trim().split(/\s+/);
+
+    if (cmd === '/admin' || cmd === '/help') {
+      await tg('sendMessage', { chat_id: chatId, text:
+        'Команды администратора:\n' +
+        '/grant ID — выдать Pro пользователю\n' +
+        '/revoke ID — снять Pro\n' +
+        '/check ID — проверить статус\n' +
+        '/list — сколько всего с Pro\n\n' +
+        'ID пользователя можно узнать: попросите его написать боту @userinfobot.' });
+      return;
+    }
+    if (cmd === '/grant' && arg) {
+      grantPro(arg);
+      await tg('sendMessage', { chat_id: chatId, text: `✅ Pro выдан пользователю ${arg}.` });
+      return;
+    }
+    if (cmd === '/revoke' && arg) {
+      revokePro(arg);
+      await tg('sendMessage', { chat_id: chatId, text: `🚫 Pro снят у пользователя ${arg}.` });
+      return;
+    }
+    if (cmd === '/check' && arg) {
+      await tg('sendMessage', { chat_id: chatId, text: `Пользователь ${arg}: ${isPro(arg) ? 'Pro активен ✅' : 'без Pro'}` });
+      return;
+    }
+    if (cmd === '/list') {
+      await tg('sendMessage', { chat_id: chatId, text: `Всего пользователей с Pro: ${proUsers.size}` });
+      return;
+    }
   }
 
   // pre_checkout — обязательно ответить в течение 10 секунд, иначе оплата отменится
