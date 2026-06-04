@@ -4,6 +4,7 @@
   "description": "Налоговый навигатор ИП 2026 — лендинг + Telegram Mini App",
   "type": "module",
   "scripts": {
+    "start": "node bot/server.js",
     "test": "node test/verify.js"
   },
   "license": "UNLICENSED",

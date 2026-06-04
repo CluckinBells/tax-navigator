@@ -17,7 +17,8 @@ import crypto from 'node:crypto';
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://example.com/webapp/index.html';
-const PORT = process.env.PORT || 3000;
+// Порт: Amvera ожидает 80 (см. amvera.yml containerPort). Локально можно задать PORT.
+const PORT = process.env.PORT || 80;
 
 // --- Оплата через ЮKassa (рубли картой прямо в Telegram) ---
 // PROVIDER_TOKEN — «платёжный токен» из @BotFather (Bot Settings → Payments → ЮKassa).
