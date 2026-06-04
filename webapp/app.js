@@ -28,7 +28,7 @@ document.addEventListener('click', (e) => {
 
 // Адрес бэкенда (бота). Подставьте свой при деплое.
 // Объявлен в начале файла, т.к. используется в verifyProWithBackend() при инициализации.
-const BACKEND_URL = 'https://your-bot-backend.example.com';
+const BACKEND_URL = 'https://nalogovik-cluckin.waw0.amvera.tech';
 // Адрес страницы политики конфиденциальности (тот же домен, где выложена статика).
 const PRIVACY_URL = 'https://cluckinbells.github.io/tax-navigator/landing/privacy.html';
 
