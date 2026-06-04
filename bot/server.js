@@ -1,13 +1,14 @@
 // Бэкенд бота «Налоговый навигатор ИП 2026».
 // Делает три вещи:
 //   1. Отдаёт команду /start с кнопкой запуска Mini App.
-//   2. Создаёт инвойс Telegram Stars и выдаёт invoice link для openInvoice().
-//   3. Подтверждает оплату (pre_checkout + successful_payment) и помечает пользователя как Pro.
+//   2. Создаёт инвойс ЮKassa (рубли картой) и выдаёт invoice link для openInvoice().
+//   3. Подтверждает оплату (pre_checkout + successful_payment) и выдаёт Pro навсегда.
 //
-// Оплата идёт через Telegram Stars (XTR) — не нужен эквайринг и проверка ИП.
-// Позже Stars можно заменить на рубли (ЮKassa) — поменяется только провайдер в инвойсе.
+// Оплата — через ЮKassa прямо в Telegram (рубли картой/SberPay/ЮMoney, чек по 54-ФЗ).
+// Платёжный токен берётся в @BotFather (Payments → ЮKassa). Магазин ЮKassa должен быть
+// зарегистрирован «для Telegram-бота» (не для сайта). Один бот = один магазин.
 //
-// Запуск:  BOT_TOKEN=xxx WEBAPP_URL=https://... node bot/server.js
+// Запуск:  BOT_TOKEN=xxx PROVIDER_TOKEN=xxx WEBAPP_URL=https://... node bot/server.js
 // Зависимости: только встроенный http + fetch (Node 18+). Без npm-пакетов.
 
 import http from 'node:http';
@@ -17,16 +18,25 @@ import crypto from 'node:crypto';
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://example.com/webapp/index.html';
 const PORT = process.env.PORT || 3000;
-// Цена Pro в Telegram Stars (XTR). Ориентир: 1990 ₽ ≈ 1000 ⭐
-// (курс Stars плавает — уточните актуальный в @PremiumBot и поменяйте PRO_PRICE_STARS).
-// Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
-const PRO_PRICE_STARS = Number(process.env.PRO_PRICE_STARS || 1000);
+
+// --- Оплата через ЮKassa (рубли картой прямо в Telegram) ---
+// PROVIDER_TOKEN — «платёжный токен» из @BotFather (Bot Settings → Payments → ЮKassa).
+// Это НЕ секретный ключ из ЛК ЮKassa — отдельный токен для бота, выдаётся при привязке магазина.
+const PROVIDER_TOKEN = process.env.PROVIDER_TOKEN || '';
+// Цена Pro в рублях. Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
+const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 1990);
+// Ставка НДС для чека 54-ФЗ: 1 = без НДС (для ИП на УСН/НПД). См. ЛК ЮKassa.
+const VAT_CODE = Number(process.env.VAT_CODE || 1);
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 if (!BOT_TOKEN) {
   console.error('❌ Не задан BOT_TOKEN. Получите токен у @BotFather и запустите:');
-  console.error('   BOT_TOKEN=xxx WEBAPP_URL=https://.../webapp/index.html node bot/server.js');
+  console.error('   BOT_TOKEN=xxx PROVIDER_TOKEN=xxx WEBAPP_URL=https://... node bot/server.js');
   process.exit(1);
+}
+if (!PROVIDER_TOKEN) {
+  console.warn('⚠️  Не задан PROVIDER_TOKEN — оплата ЮKassa не заработает.');
+  console.warn('   Получите его в @BotFather: /mybots → бот → Payments → ЮKassa → Live token.');
 }
 
 // --- Хранилище Pro-статусов ---
@@ -94,18 +104,39 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { userId: user.id, isPro: isPro(user.id) });
   }
 
-  // 2) Mini App просит ссылку на оплату Pro
+  // 2) Mini App просит ссылку на оплату Pro (ЮKassa, рубли картой)
   if (req.url === '/create-invoice' && req.method === 'POST') {
     const user = verifyInitData(body.initData);
     if (!user) return json(res, 401, { error: 'bad initData' });
     if (isPro(user.id)) return json(res, 200, { alreadyPro: true });
 
+    const title = 'Налоговый навигатор Pro';
+    const description = 'Разовый доступ навсегда: детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.';
+
     const resp = await tg('createInvoiceLink', {
-      title: 'Налоговый навигатор Pro',
-      description: 'Разовый доступ навсегда: детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.',
+      title,
+      description,
       payload: `pro_${user.id}_${Date.now()}`,
-      currency: 'XTR', // Telegram Stars
-      prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_STARS }],
+      provider_token: PROVIDER_TOKEN,
+      currency: 'RUB',
+      // сумма в КОПЕЙКАХ (требование Telegram Payments API)
+      prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_RUB * 100 }],
+      // для чека 54-ФЗ ЮKassa требует email/телефон плательщика
+      need_email: true,
+      send_email_to_provider: true,
+      // данные чека для ЮKassa: сумма в РУБЛЯХ (строкой)
+      provider_data: JSON.stringify({
+        receipt: {
+          items: [{
+            description: title,
+            quantity: '1.00',
+            amount: { value: PRO_PRICE_RUB.toFixed(2), currency: 'RUB' },
+            vat_code: VAT_CODE,
+            payment_mode: 'full_payment',
+            payment_subject: 'service',
+          }],
+        },
+      }),
     });
     if (!resp.ok) return json(res, 500, { error: resp.description });
     return json(res, 200, { invoiceLink: resp.result });
@@ -171,7 +202,8 @@ function json(res, code, obj) {
 server.listen(PORT, () => {
   console.log(`✅ Бот-бэкенд слушает порт ${PORT}`);
   console.log(`   Mini App: ${WEBAPP_URL}`);
-  console.log(`   Цена Pro: ${PRO_PRICE_STARS} ⭐ (разовая покупка, навсегда)`);
+  console.log(`   Цена Pro: ${PRO_PRICE_RUB} ₽ через ЮKassa (разовая покупка, навсегда)`);
+  console.log(`   Платёжный токен ЮKassa: ${PROVIDER_TOKEN ? 'задан ✓' : 'НЕ задан ✗'}`);
   console.log(`\n   Не забудьте установить вебхук:`);
   console.log(`   curl "${API}/setWebhook?url=https://ВАШ_ДОМЕН/webhook/${BOT_TOKEN}"`);
 });
