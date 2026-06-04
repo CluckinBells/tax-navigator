@@ -413,7 +413,9 @@ async function handleUpdate(update) {
         '/grant ID — выдать Pro пользователю\n' +
         '/revoke ID — снять Pro\n' +
         '/check ID — проверить статус\n' +
-        '/list — сколько всего с Pro\n\n' +
+        '/list — сколько всего с Pro\n' +
+        '/remstats — сколько подписок на напоминания\n' +
+        '/testreminder — прислать пример напоминания\n\n' +
         'ID пользователя можно узнать: попросите его написать боту @userinfobot.' });
       return;
     }
@@ -433,6 +435,19 @@ async function handleUpdate(update) {
     }
     if (cmd === '/list') {
       await tg('sendMessage', { chat_id: chatId, text: `Всего пользователей с Pro: ${proUsers.size}` });
+      return;
+    }
+    if (cmd === '/remstats') {
+      const subs = Object.values(reminders).filter((s) => s?.regime);
+      const byRegime = subs.reduce((m, s) => ((m[REGIME_LABELS[s.regime] || s.regime] = (m[REGIME_LABELS[s.regime] || s.regime] || 0) + 1), m), {});
+      const lines = Object.entries(byRegime).map(([k, v]) => `  ${k}: ${v}`).join('\n');
+      await tg('sendMessage', { chat_id: chatId, text: `Подписок на напоминания: ${subs.length}` + (lines ? `\n${lines}` : '') });
+      return;
+    }
+    if (cmd === '/testreminder') {
+      // Шлём пример напоминания себе — проверить вид и доставку (в базу не пишется).
+      await sendReminder(chatId, 'usn6', { title: 'Аванс по УСН за полугодие', date: '2026-07-28', kind: 'Аванс', daysLeft: 3 });
+      await tg('sendMessage', { chat_id: chatId, text: '↑ так выглядит напоминание подписчикам (тестовое сообщение).' });
       return;
     }
   }
