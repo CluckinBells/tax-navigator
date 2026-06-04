@@ -216,21 +216,18 @@ function recalc() {
   }
 }
 
-// CTA «включить напоминания»: подписываем кнопку под лучший режим и ведём в бота.
+// CTA «включить напоминания» (Pro): кнопка под лучший режим ведёт в бота;
+// у пользователя без Pro — открывает пейволл.
 function renderRemindCta(res) {
   const btn = $('remindBtn');
   if (!btn) return;
   const fam = res.best ? REM_FAMILY_BY_REGIME[res.best.id] : null;
-  if (fam) {
-    btn.textContent = `🔔 Напоминать о сроках (${FAMILY_LABEL[fam]})`;
-    btn.dataset.param = `rem_${fam}`;
-  } else {
-    // НПД или нет доступных режимов — ведём в общий выбор режима.
-    btn.textContent = '🔔 Включить напоминания о сроках';
-    btn.dataset.param = 'reminders';
-  }
+  btn.dataset.param = fam ? `rem_${fam}` : 'reminders';
+  if (!isPro) { btn.textContent = '🔔 Включить напоминания — в Pro'; return; }
+  btn.textContent = fam ? `🔔 Напоминать о сроках (${FAMILY_LABEL[fam]})` : '🔔 Включить напоминания о сроках';
 }
 $('remindBtn').addEventListener('click', () => {
+  if (!isPro) { openPaywall(); return; } // напоминания — часть Pro
   const param = $('remindBtn').dataset.param || 'reminders';
   const url = `https://t.me/${BOT_USERNAME}?start=${param}`;
   if (tg?.openTelegramLink) tg.openTelegramLink(url);

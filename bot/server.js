@@ -273,7 +273,8 @@ const SECTIONS = {
     '🎯 Точки перелома — когда менять режим\n' +
     '📄 PDF-отчёт с логотипом для бухгалтера\n' +
     '📑 Черновик декларации УСН (КНД 1152017)\n' +
-    '📅 Налоговый календарь под ваш режим\n\n' +
+    '📅 Налоговый календарь под ваш режим\n' +
+    '🔔 Напоминания о сроках в Telegram под ваш режим\n\n' +
     'Оформить можно прямо в калькуляторе — откройте его и нажмите на любой Pro-раздел.',
   dates:
     '📅 <b>Ключевые налоговые сроки 2026</b> (для ИП)\n\n' +
@@ -300,7 +301,7 @@ function remindersPicker() {
   return {
     text:
       '🔔 <b>Напоминания о налоговых сроках</b>\n\n' +
-      'Выберите ваш режим — и бот заранее напомнит о платежах и отчётности: за неделю, за 3 дня, за день и в день срока. Это бесплатно.\n\n' +
+      'Выберите ваш режим — и бот заранее напомнит о платежах и отчётности: за неделю, за 3 дня, за день и в день срока.\n\n' +
       'Какой у вас налоговый режим?\n\n' +
       '<i>На НПД отдельных напоминаний нет: налог начисляет ФНС ежемесячно в приложении «Мой налог» (оплата до 28-го числа).</i>',
     keyboard: { inline_keyboard: [
@@ -349,6 +350,18 @@ const remindersOff = {
   text: '🔕 Напоминания выключены. Включить снова можно в меню в любой момент.',
   keyboard: { inline_keyboard: [[{ text: '← Назад в меню', callback_data: 'menu' }]] },
 };
+// Экран-апселл для тех, у кого нет Pro: напоминания — часть Pro.
+const remindersUpsell = {
+  text:
+    '🔔 <b>Напоминания о сроках — в Pro</b>\n\n' +
+    'Бот будет писать заранее о каждом налоговом сроке под ваш режим — за неделю, за 3 дня, за день и в день платежа. Чтобы не держать даты в голове и не платить пени.\n\n' +
+    'Это часть Pro (разовая покупка, навсегда) — вместе с детальным разбором, сценариями, точками перелома, черновиком декларации и календарём.\n\n' +
+    'Оформить можно прямо в калькуляторе — откройте его и нажмите на любой Pro-раздел.',
+  keyboard: { inline_keyboard: [
+    [{ text: '🧮 Открыть калькулятор', url: MINIAPP_LINK }],
+    [{ text: '← Назад в меню', callback_data: 'menu' }],
+  ] },
+};
 
 // --- Обработка апдейтов Telegram ---
 async function handleUpdate(update) {
@@ -370,6 +383,7 @@ async function handleUpdate(update) {
     if (dataKey === 'reminders' || dataKey === 'reminders_pick' || dataKey === 'rem_off' || dataKey.startsWith('rem_set_')) {
       let screen;
       if (dataKey === 'rem_off') { unsubscribeReminders(userId); screen = remindersOff; }
+      else if (!isPro(userId)) { screen = remindersUpsell; } // напоминания — часть Pro
       else if (dataKey === 'reminders_pick') { screen = remindersPicker(); }
       else if (dataKey.startsWith('rem_set_')) {
         const regime = REM_FAMILY[dataKey.slice('rem_set_'.length)];
@@ -399,18 +413,19 @@ async function handleUpdate(update) {
     // Часть после «/start » — deep-link параметр из приложения (t.me/бот?start=...).
     const payload = (update.message.text.split(/\s+/)[1] || '').trim();
 
-    // Deep-link «reminders» — открыть выбор режима для напоминаний.
+    // Deep-link «reminders» — выбор режима (или апселл, если нет Pro).
     if (payload === 'reminders') {
-      const s = remindersPicker();
+      const s = isPro(fromId) ? remindersPicker() : remindersUpsell;
       await tg('sendMessage', { chat_id: chatId, text: s.text, parse_mode: 'HTML', reply_markup: s.keyboard, disable_web_page_preview: true });
       return;
     }
-    // Deep-link «rem_<семья>» — сразу подписать на нужный режим (один тап из калькулятора).
+    // Deep-link «rem_<семья>» — сразу подписать (один тап из калькулятора), если есть Pro.
     if (payload.startsWith('rem_')) {
       const regime = REM_FAMILY[payload.slice('rem_'.length)];
       if (regime) {
-        subscribeReminders(fromId, chatId, regime);
-        const s = remindersConfirm(fromId);
+        let s;
+        if (isPro(fromId)) { subscribeReminders(fromId, chatId, regime); s = remindersConfirm(fromId); }
+        else s = remindersUpsell;
         await tg('sendMessage', { chat_id: chatId, text: s.text, parse_mode: 'HTML', reply_markup: s.keyboard, disable_web_page_preview: true });
         return;
       }
@@ -490,8 +505,11 @@ async function handleUpdate(update) {
     console.log('[payment] Pro выдан userId', userId, 'payment', sp.provider_payment_charge_id);
     await tg('sendMessage', {
       chat_id: update.message.chat.id,
-      text: '🎉 Pro активирован навсегда! Открыты детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.',
-      reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть Pro', web_app: { url: `${WEBAPP_URL}?pro=1` } }]] },
+      text: '🎉 Pro активирован навсегда! Открыты детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь, PDF-отчёт и напоминания о сроках.',
+      reply_markup: { inline_keyboard: [
+        [{ text: '🚀 Открыть Pro', web_app: { url: `${WEBAPP_URL}?pro=1` } }],
+        [{ text: '🔔 Включить напоминания о сроках', callback_data: 'reminders' }],
+      ] },
     });
     return;
   }
@@ -542,6 +560,7 @@ async function runReminderCheck() {
     let sentCount = 0;
     for (const [userId, sub] of Object.entries(reminders)) {
       if (!sub?.regime) continue;
+      if (!isPro(userId)) continue; // напоминания только для Pro (учитывает возврат/отзыв Pro)
       const chatId = sub.chatId || userId;
       for (const item of dueReminders(sub.regime, now, sub.sent || {})) {
         const ok = await sendReminder(chatId, sub.regime, item);
