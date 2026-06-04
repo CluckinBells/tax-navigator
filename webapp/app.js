@@ -714,9 +714,14 @@ function closePaywall() { $('paywall').hidden = true; }
 $('paywall').querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closePaywall));
 
 $('buyProBtn').addEventListener('click', async () => {
-  const alertMsg = (m) => (tg?.showAlert ? tg.showAlert(m) : alert(m));
+  // Показываем сообщение И всплывашкой, И видимым текстом в окне (showAlert иногда молчит).
+  const alertMsg = (m) => {
+    const note = $('payNote');
+    if (note) { note.textContent = m; note.style.display = 'block'; }
+    try { if (tg?.showAlert) tg.showAlert(m); else alert(m); } catch (_) {}
+  };
+  alertMsg('Создаём счёт…'); // сразу видимый отклик, что нажатие сработало
   if (!tg) {
-    // Вне Telegram (обычный браузер) — окна оплаты нет, включаем Pro для демонстрации.
     unlockPro();
     return;
   }
