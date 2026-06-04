@@ -751,21 +751,33 @@ $('buyProBtn').addEventListener('click', async () => {
       alertMsg('Сервер не вернул ссылку на оплату. Попробуйте позже.');
       return;
     }
-    if (!tg.openInvoice) {
-      alertMsg('Оплата работает только в приложении Telegram (на телефоне или компьютере), не в веб-версии.');
-      return;
+    // Прячем «Создаём счёт…» — ссылка получена, открываем оплату.
+    const note = $('payNote'); if (note) note.style.display = 'none';
+
+    // Открываем счёт. openInvoice принимает slug или полную ссылку t.me/$...
+    if (tg.openInvoice) {
+      tg.openInvoice(data.invoiceLink, (status) => {
+        if (status === 'paid') {
+          unlockPro();
+          tg.HapticFeedback?.notificationOccurred?.('success');
+          alertMsg('Pro активирован! Спасибо за покупку 🎉');
+        } else if (status === 'failed') {
+          alertMsg('Оплата не прошла. Попробуйте ещё раз.');
+        } else if (status === 'cancelled') {
+          if (note) note.style.display = 'none';
+        }
+      });
+    } else if (tg.openTelegramLink) {
+      // Запасной путь для старых клиентов: открываем счёт как ссылку t.me.
+      tg.openTelegramLink(data.invoiceLink);
+    } else {
+      alertMsg('Оплата работает в приложении Telegram (телефон/компьютер), не в веб-версии. Откройте бота в приложении.');
     }
-    tg.openInvoice(data.invoiceLink, (status) => {
-      if (status === 'paid') {
-        unlockPro();
-        tg.HapticFeedback?.notificationOccurred?.('success');
-        alertMsg('Pro активирован! Спасибо за покупку 🎉');
-      } else if (status === 'failed') {
-        alertMsg('Оплата не прошла. Попробуйте ещё раз.');
-      }
-    });
   } catch (e) {
-    alertMsg('Ошибка связи с сервером оплаты: ' + (e?.message || 'неизвестно') + '. Проверьте интернет и попробуйте снова.');
+    const msg = e?.name === 'AbortError'
+      ? 'Сервер оплаты долго не отвечает. Попробуйте ещё раз через минуту.'
+      : 'Ошибка связи с сервером оплаты: ' + (e?.message || 'неизвестно') + '.';
+    alertMsg(msg);
   }
 });
 
