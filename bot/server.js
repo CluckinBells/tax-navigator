@@ -214,7 +214,7 @@ const server = http.createServer(async (req, res) => {
 const MENU_TEXT =
   '👋 «Налоговый навигатор ИП 2026»\n\n' +
   'Сравните 6 налоговых режимов с учётом реформы НДС и узнайте, сколько можно сэкономить. Базовый расчёт — бесплатно.\n\n' +
-  'Выберите раздел:';
+  'Выберите раздел: 👇';
 
 const MENU_KEYBOARD = {
   inline_keyboard: [
@@ -365,6 +365,7 @@ function json(res, code, obj) {
 
 server.listen(PORT, () => {
   console.log(`✅ Бот-бэкенд слушает порт ${PORT}`);
+  console.log(`   Версия кода: МЕНЮ-2 (start→разделы, callback_query, админ-команды)`);
   console.log(`   Mini App: ${WEBAPP_URL}`);
   console.log(`   Цена Pro: ${PRO_PRICE_RUB} ₽ через ЮKassa (разовая покупка, навсегда)`);
   console.log(`   Платёжный токен ЮKassa: ${PROVIDER_TOKEN ? 'задан ✓' : 'НЕ задан ✗'}`);
