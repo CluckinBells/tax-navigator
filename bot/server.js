@@ -15,8 +15,11 @@ import http from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import crypto from 'node:crypto';
 
-const BOT_TOKEN = process.env.BOT_TOKEN || '';
-const WEBAPP_URL = process.env.WEBAPP_URL || 'https://example.com/webapp/index.html';
+// .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
+// попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
+// с ошибкой "Unsupported URL protocol" (видит протокол как '\thttps').
+const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim();
+const WEBAPP_URL = (process.env.WEBAPP_URL || 'https://example.com/webapp/index.html').trim();
 // Порт: Amvera ожидает 80 (см. amvera.yml containerPort). Локально можно задать PORT.
 const PORT = process.env.PORT || 80;
 // ID администратора (ваш Telegram ID) — кому доступны команды управления Pro.
@@ -27,7 +30,7 @@ const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
 // --- Оплата через ЮKassa (рубли картой прямо в Telegram) ---
 // PROVIDER_TOKEN — «платёжный токен» из @BotFather (Bot Settings → Payments → ЮKassa).
 // Это НЕ секретный ключ из ЛК ЮKassa — отдельный токен для бота, выдаётся при привязке магазина.
-const PROVIDER_TOKEN = process.env.PROVIDER_TOKEN || '';
+const PROVIDER_TOKEN = (process.env.PROVIDER_TOKEN || '').trim();
 // Цена Pro в рублях. Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
 const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 1990);
 // Ставка НДС для чека 54-ФЗ: 1 = без НДС (для ИП на УСН/НПД). См. ЛК ЮKassa.
