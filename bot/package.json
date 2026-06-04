@@ -1,7 +1,7 @@
 {
   "name": "tax-navigator-bot",
   "version": "0.1.0",
-  "description": "Бэкенд бота: Telegram Stars оплата + выдача Pro",
+  "description": "Бэкенд бота: оплата ЮKassa (рубли) + выдача Pro",
   "type": "module",
   "scripts": {
     "start": "node server.js"

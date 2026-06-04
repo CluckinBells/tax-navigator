@@ -1,0 +1,22 @@
+# Конфигурация деплоя бота на Amvera (https://docs.amvera.ru).
+# Запускает бэкенд бота (bot/server.js). Импортирует движок из shared/ — поэтому
+# деплоим весь репозиторий (bot/ и shared/ должны лежать рядом).
+#
+# Переменные окружения (BOT_TOKEN, PROVIDER_TOKEN, WEBAPP_URL, PRO_PRICE_RUB)
+# задаются в панели Amvera как СЕКРЕТЫ — НЕ в этом файле и НЕ в коде.
+
+meta:
+  environment: node
+  toolchain:
+    name: npm
+    version: 18
+
+build:
+  # Зависимостей у бота нет (только встроенные модули Node), отдельная сборка не нужна.
+  skip: true
+
+run:
+  # Amvera пробрасывает порт через переменную PORT — сервер её читает.
+  command: node bot/server.js
+  containerPort: 3000
+  persistenceMount: /data   # том для bot/pro-users.json (список оплативших, чтобы не терялся)

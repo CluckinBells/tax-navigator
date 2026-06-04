@@ -29,29 +29,45 @@
 
 ---
 
-## ЭТАП Б. Запустить сервер бота
+## ЭТАП Б. Запустить сервер бота на Amvera
 
-Серверу `bot/server.js` нужно работать 24/7 на хостинге с Node 18+.
-Бесплатные/дешёвые варианты: **Railway**, **Render**, **Amvera** (РФ), любой VPS.
+Выбран **Amvera** — российский хостинг (рублёвая оплата), но с заграничным регионом
+(чтобы бот не лагал с Telegram в 2026). Деплой через `git push`. Конфиг `amvera.yml` уже готов.
 
-### Шаг 3. Выложить и запустить
-На хостинге задайте переменные окружения:
-```
-BOT_TOKEN=токен_бота_из_BotFather
-PROVIDER_TOKEN=платёжный_токен_ЮKassa_из_шага_2
-WEBAPP_URL=https://cluckinbells.github.io/tax-navigator/webapp/index.html
-PRO_PRICE_RUB=1990
-VAT_CODE=1
-```
-- `VAT_CODE=1` — «без НДС» (для ИП на УСН/НПД). Если у вас другой режим — уточните код в ЛК ЮKassa.
-- Запуск: `node bot/server.js` (или `npm start` в папке bot).
+### Шаг 3. Создать проект на Amvera
+1. Зарегистрируйтесь на **https://amvera.ru** (дают стартовый баланс на пару недель).
+2. Создайте новый проект → тип **Node.js** → **сервер**.
+3. ⚠️ Выберите **заграничный регион** (Варшава) — иначе бот может тормозить с Telegram.
 
-### Шаг 4. Поставить вебхук
-Чтобы Telegram присылал боту события (оплаты, /start):
+### Шаг 4. Загрузить код (git push)
+Amvera даст адрес репозитория. Из папки проекта:
+```powershell
+cd "C:\Users\XDot PC\OneDrive\Desktop\tax-navigator"
+git remote add amvera https://git.amvera.ru/ВАШ_ЛОГИН/ВАШ_ПРОЕКТ
+git push amvera dev:master
 ```
-https://api.telegram.org/botВАШ_BOT_TOKEN/setWebhook?url=https://ВАШ_СЕРВЕР/webhook/ВАШ_BOT_TOKEN
+*(пушим ветку `dev` — там код с ЮKassa. Когда применим в `main`, будете пушить `main:master`.)*
+
+### Шаг 5. Задать секреты в панели Amvera
+В проекте → раздел **Переменные/Секреты** добавьте (как **секреты**, не открытым текстом):
 ```
-(откройте этот адрес в браузере один раз, должно вернуть `"ok":true`)
+BOT_TOKEN       = токен_бота_из_BotFather
+PROVIDER_TOKEN  = платёжный_токен_ЮKassa_из_шага_2
+WEBAPP_URL      = https://cluckinbells.github.io/tax-navigator/webapp/index.html
+PRO_PRICE_RUB   = 1990
+VAT_CODE        = 1
+DATA_DIR        = /data
+```
+- `VAT_CODE=1` — «без НДС» (для ИП на УСН/НПД). Другой режим — уточните код в ЛК ЮKassa.
+- `DATA_DIR=/data` — чтобы список оплативших не терялся при перезапуске.
+- Amvera выдаст вашему сервису HTTPS-адрес вида `https://ВАШ_ПРОЕКТ.amvera.io` — запишите его.
+
+### Шаг 6. Поставить вебхук
+Чтобы Telegram присылал боту события (оплаты, /start), откройте в браузере один раз:
+```
+https://api.telegram.org/botВАШ_BOT_TOKEN/setWebhook?url=https://ВАШ_ПРОЕКТ.amvera.io/webhook/ВАШ_BOT_TOKEN
+```
+Должно вернуть `{"ok":true,...}`.
 
 ---
 

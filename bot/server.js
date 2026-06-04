@@ -42,7 +42,11 @@ if (!PROVIDER_TOKEN) {
 // --- Хранилище Pro-статусов ---
 // Для прода замените на БД (SQLite/Postgres). Здесь — простой JSON-файл.
 // Pro — разовая покупка навсегда: храним просто список userId, кто оплатил.
-const DB_PATH = new URL('./pro-users.json', import.meta.url);
+// DATA_DIR — на Amvera монтируется постоянный том (/data), чтобы список не терялся
+// при перезапусках. Локально (без переменной) пишем рядом с server.js.
+const DB_PATH = process.env.DATA_DIR
+  ? new URL('pro-users.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
+  : new URL('./pro-users.json', import.meta.url);
 let proUsers = new Set();
 try {
   const raw = JSON.parse(readFileSync(DB_PATH, 'utf8'));
