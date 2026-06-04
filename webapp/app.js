@@ -714,34 +714,48 @@ function closePaywall() { $('paywall').hidden = true; }
 $('paywall').querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closePaywall));
 
 $('buyProBtn').addEventListener('click', async () => {
+  const alertMsg = (m) => (tg?.showAlert ? tg.showAlert(m) : alert(m));
   if (!tg) {
-    // Режим разработки в браузере — просто включаем Pro для демонстрации.
+    // Вне Telegram (обычный браузер) — окна оплаты нет, включаем Pro для демонстрации.
     unlockPro();
     return;
   }
   if (!BACKEND_READY) {
-    // Этап 1: сервер оплаты ещё не подключён — сообщаем вежливо, без сетевой ошибки.
-    tg.showAlert?.('Оплата Pro скоро откроется. Следите за обновлениями бота!');
+    alertMsg('Оплата Pro скоро откроется. Следите за обновлениями бота!');
     return;
   }
   try {
-    // Запрашиваем у бэкенда ссылку на инвойс (Telegram Stars).
-    // Бэкенд создаёт инвойс через Bot API и возвращает invoice link. См. bot/server.js.
     const res = await fetch(`${BACKEND_URL}/create-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData }),
     });
-    const { invoiceLink } = await res.json();
-    tg.openInvoice(invoiceLink, (status) => {
+    const data = await res.json().catch(() => ({}));
+    // Если сервер вернул ошибку или не дал ссылку — показываем причину (а не молчим).
+    if (!res.ok || data.error) {
+      alertMsg('Не удалось создать счёт: ' + (data.error || ('код ' + res.status)) + '. Напишите нам, мы поможем.');
+      return;
+    }
+    if (data.alreadyPro) { unlockPro(); return; }
+    if (!data.invoiceLink) {
+      alertMsg('Сервер не вернул ссылку на оплату. Попробуйте позже.');
+      return;
+    }
+    if (!tg.openInvoice) {
+      alertMsg('Оплата работает только в приложении Telegram (на телефоне или компьютере), не в веб-версии.');
+      return;
+    }
+    tg.openInvoice(data.invoiceLink, (status) => {
       if (status === 'paid') {
         unlockPro();
         tg.HapticFeedback?.notificationOccurred?.('success');
-        tg.showAlert?.('Pro активирован! Спасибо за покупку 🎉');
+        alertMsg('Pro активирован! Спасибо за покупку 🎉');
+      } else if (status === 'failed') {
+        alertMsg('Оплата не прошла. Попробуйте ещё раз.');
       }
     });
   } catch (e) {
-    tg.showAlert?.('Не удалось открыть оплату. Попробуйте позже.');
+    alertMsg('Ошибка связи с сервером оплаты: ' + (e?.message || 'неизвестно') + '. Проверьте интернет и попробуйте снова.');
   }
 });
 
