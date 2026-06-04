@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#4f46e5" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="app">
@@ -65,6 +65,18 @@
     <section class="card">
       <div class="card__title">Все режимы <span class="card__hint">меньше — лучше</span></div>
       <div id="compareList" class="compare"></div>
+    </section>
+
+    <!-- Напоминания о сроках (бесплатно, ведёт в бота) -->
+    <section class="card remind-cta">
+      <div class="remind-cta__head">
+        <span class="remind-cta__icon">🔔</span>
+        <div>
+          <div class="remind-cta__title">Не пропустите налоговые сроки</div>
+          <div class="remind-cta__text">Бот напомнит об авансах, взносах и отчётности — за неделю, за день и в день платежа. Бесплатно.</div>
+        </div>
+      </div>
+      <button class="btn btn--primary" id="remindBtn">🔔 Включить напоминания</button>
     </section>
 
     <!-- PRO: вердикт словами -->
@@ -154,6 +166,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=9"></script>
+  <script type="module" src="app.js?v=10"></script>
 </body>
 </html>

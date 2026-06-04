@@ -392,10 +392,32 @@ async function handleUpdate(update) {
     return;
   }
 
-  // /start и /menu — показываем главное меню
+  // /start и /menu — показываем главное меню (или сразу раздел по deep-link параметру)
   if (update.message?.text?.startsWith('/start') || update.message?.text?.startsWith('/menu')) {
-    console.log('[/start] получен от', update.message.from?.id, '— отправляю меню');
-    const r = await tg('sendMessage', { chat_id: update.message.chat.id, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
+    const chatId = update.message.chat.id;
+    const fromId = update.message.from?.id;
+    // Часть после «/start » — deep-link параметр из приложения (t.me/бот?start=...).
+    const payload = (update.message.text.split(/\s+/)[1] || '').trim();
+
+    // Deep-link «reminders» — открыть выбор режима для напоминаний.
+    if (payload === 'reminders') {
+      const s = remindersPicker();
+      await tg('sendMessage', { chat_id: chatId, text: s.text, parse_mode: 'HTML', reply_markup: s.keyboard, disable_web_page_preview: true });
+      return;
+    }
+    // Deep-link «rem_<семья>» — сразу подписать на нужный режим (один тап из калькулятора).
+    if (payload.startsWith('rem_')) {
+      const regime = REM_FAMILY[payload.slice('rem_'.length)];
+      if (regime) {
+        subscribeReminders(fromId, chatId, regime);
+        const s = remindersConfirm(fromId);
+        await tg('sendMessage', { chat_id: chatId, text: s.text, parse_mode: 'HTML', reply_markup: s.keyboard, disable_web_page_preview: true });
+        return;
+      }
+    }
+
+    console.log('[/start] получен от', fromId, '— отправляю меню');
+    const r = await tg('sendMessage', { chat_id: chatId, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
     console.log('[/start] ответ Telegram:', JSON.stringify(r).slice(0, 300));
     return;
   }

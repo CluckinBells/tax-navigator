@@ -48,6 +48,11 @@ if (tg) {
 // Бэкенд считается настроенным, только если адрес заменён с заглушки на реальный.
 const BACKEND_READY = !BACKEND_URL.includes('example.com');
 
+// Включение напоминаний: deep-link в бота. Семья режима → суффикс параметра start=.
+const BOT_USERNAME = 'taxes_navigator_bot';
+const REM_FAMILY_BY_REGIME = { usn6: 'usn', usn15: 'usn', psn: 'psn', ausn8: 'ausn', ausn20: 'ausn' };
+const FAMILY_LABEL = { usn: 'УСН', psn: 'Патент', ausn: 'АУСН' };
+
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
 async function verifyProWithBackend() {
   if (!tg?.initData || !BACKEND_READY) return; // на Этапе 1 (без сервера) не дёргаем сеть
@@ -201,6 +206,7 @@ function recalc() {
 
   renderBest(res);
   renderCompare(res);
+  renderRemindCta(res);
   if (isPro) {
     renderVerdict(res, input);
     renderDetail(res);
@@ -209,6 +215,27 @@ function recalc() {
     renderDeclaration(res, input);
   }
 }
+
+// CTA «включить напоминания»: подписываем кнопку под лучший режим и ведём в бота.
+function renderRemindCta(res) {
+  const btn = $('remindBtn');
+  if (!btn) return;
+  const fam = res.best ? REM_FAMILY_BY_REGIME[res.best.id] : null;
+  if (fam) {
+    btn.textContent = `🔔 Напоминать о сроках (${FAMILY_LABEL[fam]})`;
+    btn.dataset.param = `rem_${fam}`;
+  } else {
+    // НПД или нет доступных режимов — ведём в общий выбор режима.
+    btn.textContent = '🔔 Включить напоминания о сроках';
+    btn.dataset.param = 'reminders';
+  }
+}
+$('remindBtn').addEventListener('click', () => {
+  const param = $('remindBtn').dataset.param || 'reminders';
+  const url = `https://t.me/${BOT_USERNAME}?start=${param}`;
+  if (tg?.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, '_blank');
+});
 
 function renderBest(res) {
   if (res.best) {
