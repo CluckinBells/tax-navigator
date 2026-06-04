@@ -267,6 +267,10 @@ const SECTIONS = {
 
 // --- Обработка апдейтов Telegram ---
 async function handleUpdate(update) {
+  // Лог входящего апдейта (что прислал Telegram) — для диагностики.
+  console.log('[update] тип:', update.callback_query ? 'callback' : (update.message?.text || update.message?.successful_payment ? 'message' : 'other'),
+              update.message?.text ? '| текст: ' + update.message.text.slice(0, 30) : '');
+
   // Нажатие inline-кнопки меню (callback_query)
   if (update.callback_query) {
     const cq = update.callback_query;
@@ -285,7 +289,9 @@ async function handleUpdate(update) {
 
   // /start и /menu — показываем главное меню
   if (update.message?.text?.startsWith('/start') || update.message?.text?.startsWith('/menu')) {
-    await tg('sendMessage', { chat_id: update.message.chat.id, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
+    console.log('[/start] получен от', update.message.from?.id, '— отправляю меню');
+    const r = await tg('sendMessage', { chat_id: update.message.chat.id, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
+    console.log('[/start] ответ Telegram:', JSON.stringify(r).slice(0, 300));
     return;
   }
 
