@@ -14,12 +14,17 @@
 import http from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import crypto from 'node:crypto';
+import { nextDeadline } from '../shared/engine.js';
+import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 
 // .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
 // попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
 // с ошибкой "Unsupported URL protocol" (видит протокол как '\thttps').
 const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim();
 const WEBAPP_URL = (process.env.WEBAPP_URL || 'https://example.com/webapp/index.html').trim();
+// Прямая ссылка на Mini App (t.me/бот/коротыш) — для кнопок в напоминаниях.
+// url-кнопка надёжнее web_app-кнопки и открывает приложение из любого сообщения.
+const MINIAPP_LINK = (process.env.MINIAPP_LINK || 'https://t.me/taxes_navigator_bot/calc').trim();
 // Порт: Amvera ожидает 80 (см. amvera.yml containerPort). Локально можно задать PORT.
 const PORT = process.env.PORT || 80;
 // ID администратора (ваш Telegram ID) — кому доступны команды управления Pro.
@@ -82,6 +87,28 @@ function isPro(userId) { return proUsers.has(String(userId)); }
 function rememberPayment(paymentId, userId) {
   if (paymentId) { payToUser[String(paymentId)] = String(userId); savePayMap(); }
 }
+
+// --- Хранилище подписок на напоминания о сроках ---
+// reminders.json: { userId: { regime, chatId, since, sent: { 'дата:стадия': true } } }
+// regime — представитель семьи режимов (usn6/psn/ausn8): даты внутри семьи одинаковы.
+const REM_PATH = process.env.DATA_DIR
+  ? new URL('reminders.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
+  : new URL('./reminders.json', import.meta.url);
+let reminders = {};
+try { reminders = JSON.parse(readFileSync(REM_PATH, 'utf8')); } catch (_) {}
+function saveReminders() { try { writeFileSync(REM_PATH, JSON.stringify(reminders)); } catch (_) {} }
+const isoToday = () => new Date().toISOString().slice(0, 10);
+function subscribeReminders(userId, chatId, regime) {
+  const id = String(userId);
+  const prev = reminders[id] || {};
+  reminders[id] = { regime, chatId: String(chatId), since: prev.since || isoToday(), sent: prev.sent || {} };
+  saveReminders();
+}
+function unsubscribeReminders(userId) { delete reminders[String(userId)]; saveReminders(); }
+
+// Семья режима (для кнопок выбора) → представитель id; и человекочитаемые названия.
+const REM_FAMILY = { usn: 'usn6', psn: 'psn', ausn: 'ausn8' };
+const REGIME_LABELS = { usn6: 'УСН', usn15: 'УСН', psn: 'Патент (ПСН)', ausn8: 'АУСН', ausn20: 'АУСН', npd: 'НПД' };
 
 // --- Telegram Bot API helper ---
 async function tg(method, body) {
@@ -223,7 +250,7 @@ const MENU_KEYBOARD = {
   inline_keyboard: [
     [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
     [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Что даёт Pro', callback_data: 'pro' }],
-    [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }],
+    [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }, { text: '🔔 Напоминания', callback_data: 'reminders' }],
     [{ text: '🛡️ О сервисе и контакты', callback_data: 'about' }],
   ],
 };
@@ -268,6 +295,61 @@ const SECTIONS = {
     'Политика конфиденциальности: ' + WEBAPP_URL.replace('/webapp/index.html', '/landing/privacy.html'),
 };
 
+// --- Экраны раздела «Напоминания» (возвращают { text, keyboard }) ---
+function remindersPicker() {
+  return {
+    text:
+      '🔔 <b>Напоминания о налоговых сроках</b>\n\n' +
+      'Выберите ваш режим — и бот заранее напомнит о платежах и отчётности: за неделю, за 3 дня, за день и в день срока. Это бесплатно.\n\n' +
+      'Какой у вас налоговый режим?\n\n' +
+      '<i>На НПД отдельных напоминаний нет: налог начисляет ФНС ежемесячно в приложении «Мой налог» (оплата до 28-го числа).</i>',
+    keyboard: { inline_keyboard: [
+      [{ text: 'УСН (Доходы / Д-Р)', callback_data: 'rem_set_usn' }],
+      [{ text: 'Патент (ПСН)', callback_data: 'rem_set_psn' }],
+      [{ text: 'АУСН', callback_data: 'rem_set_ausn' }],
+      [{ text: '← Назад в меню', callback_data: 'menu' }],
+    ] },
+  };
+}
+function nextDeadlineLine(regime) {
+  const next = nextDeadline(regime, new Date());
+  if (!next) return 'Ближайших сроков в этом году не нашлось.';
+  return `Ближайший срок: <b>${next.title}</b> — ${daysLeftPhrase(next.daysLeft)} (${formatDateRu(next.date)}).`;
+}
+function remindersStatus(userId) {
+  const sub = reminders[String(userId)];
+  if (!sub || !sub.regime) return remindersPicker();
+  return {
+    text:
+      '🔔 <b>Напоминания включены</b>\n' +
+      `Режим: <b>${REGIME_LABELS[sub.regime] || sub.regime}</b>\n\n` +
+      nextDeadlineLine(sub.regime) + '\n\n' +
+      'Напишу заранее: за 7, за 3, за 1 день и в день срока.',
+    keyboard: { inline_keyboard: [
+      [{ text: '🔄 Сменить режим', callback_data: 'reminders_pick' }],
+      [{ text: '🔕 Выключить напоминания', callback_data: 'rem_off' }],
+      [{ text: '← Назад в меню', callback_data: 'menu' }],
+    ] },
+  };
+}
+function remindersConfirm(userId) {
+  const sub = reminders[String(userId)];
+  return {
+    text:
+      `✅ Готово! Напоминания включены для режима <b>${REGIME_LABELS[sub.regime] || sub.regime}</b>.\n\n` +
+      nextDeadlineLine(sub.regime) + '\n\n' +
+      'Буду писать заранее: за 7, за 3, за 1 день и в день срока. Выключить можно в любой момент.',
+    keyboard: { inline_keyboard: [
+      [{ text: '🔕 Выключить', callback_data: 'rem_off' }],
+      [{ text: '← Назад в меню', callback_data: 'menu' }],
+    ] },
+  };
+}
+const remindersOff = {
+  text: '🔕 Напоминания выключены. Включить снова можно в меню в любой момент.',
+  keyboard: { inline_keyboard: [[{ text: '← Назад в меню', callback_data: 'menu' }]] },
+};
+
 // --- Обработка апдейтов Telegram ---
 async function handleUpdate(update) {
   // Лог входящего апдейта (что прислал Telegram) — для диагностики.
@@ -279,13 +361,33 @@ async function handleUpdate(update) {
     const cq = update.callback_query;
     const chatId = cq.message?.chat?.id;
     const msgId = cq.message?.message_id;
-    const dataKey = cq.data;
+    const userId = cq.from?.id;
+    const dataKey = cq.data || '';
     // Отвечаем Telegram, что нажатие принято (убирает «часики» на кнопке).
     await tg('answerCallbackQuery', { callback_query_id: cq.id });
+
+    // Раздел «Напоминания»: статус / выбор режима / включение / выключение.
+    if (dataKey === 'reminders' || dataKey === 'reminders_pick' || dataKey === 'rem_off' || dataKey.startsWith('rem_set_')) {
+      let screen;
+      if (dataKey === 'rem_off') { unsubscribeReminders(userId); screen = remindersOff; }
+      else if (dataKey === 'reminders_pick') { screen = remindersPicker(); }
+      else if (dataKey.startsWith('rem_set_')) {
+        const regime = REM_FAMILY[dataKey.slice('rem_set_'.length)];
+        if (regime) { subscribeReminders(userId, chatId, regime); screen = remindersConfirm(userId); }
+        else screen = remindersPicker();
+      } else { screen = remindersStatus(userId); }
+      await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: screen.text, parse_mode: 'HTML', reply_markup: screen.keyboard, disable_web_page_preview: true });
+      return;
+    }
+
     if (dataKey === 'menu') {
       await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
     } else if (SECTIONS[dataKey]) {
-      await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: SECTIONS[dataKey], parse_mode: 'HTML', reply_markup: BACK_KEYBOARD, disable_web_page_preview: true });
+      // У раздела «Сроки 2026» добавляем кнопку включения напоминаний.
+      const kb = dataKey === 'dates'
+        ? { inline_keyboard: [[{ text: '🔔 Включить напоминания', callback_data: 'reminders' }], [{ text: '← Назад в меню', callback_data: 'menu' }]] }
+        : BACK_KEYBOARD;
+      await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: SECTIONS[dataKey], parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
     }
     return;
   }
@@ -358,6 +460,65 @@ async function handleUpdate(update) {
   }
 }
 
+// --- Планировщик напоминаний о налоговых сроках ---
+// Бот работает постоянно, поэтому раз в несколько часов проверяем, кому пора напомнить.
+// Стадии/дедупликация — в shared/reminders.js (dueReminders), чтобы логику можно было тестировать.
+const REMINDER_TICK_MS = 3 * 60 * 60 * 1000; // каждые 3 часа
+const mskHour = (now) => (now.getUTCHours() + 3) % 24; // МСК = UTC+3 (без перехода на лето)
+
+async function sendReminder(chatId, regime, item) {
+  const text =
+    '🔔 <b>Скоро налоговый срок</b>\n\n' +
+    `<b>${item.title}</b>\n` +
+    `📅 ${formatDateRu(item.date)} — ${daysLeftPhrase(item.daysLeft)}\n` +
+    `Режим: ${REGIME_LABELS[regime] || regime}\n\n` +
+    'Не забудьте оплатить или подать вовремя, чтобы избежать пеней.';
+  const r = await tg('sendMessage', {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: [
+      [{ text: '🧮 Открыть калькулятор', url: MINIAPP_LINK }],
+      [{ text: '🔕 Отключить напоминания', callback_data: 'rem_off' }],
+    ] },
+  });
+  if (!r.ok) console.log('[reminders] не отправлено', chatId, JSON.stringify(r).slice(0, 200));
+  return r.ok;
+}
+
+// Убираем из sent старые ключи (>14 дней назад), чтобы файл не разрастался.
+function pruneSent(now) {
+  const cutoff = new Date(now.getTime() - 14 * 864e5).toISOString().slice(0, 10);
+  for (const sub of Object.values(reminders)) {
+    if (!sub?.sent) continue;
+    for (const key of Object.keys(sub.sent)) {
+      if (key.split(':')[0] < cutoff) delete sub.sent[key];
+    }
+  }
+}
+
+async function runReminderCheck() {
+  try {
+    const now = new Date();
+    const h = mskHour(now);
+    if (h < 9 || h >= 21) return; // не беспокоим ночью по МСК
+    let sentCount = 0;
+    for (const [userId, sub] of Object.entries(reminders)) {
+      if (!sub?.regime) continue;
+      const chatId = sub.chatId || userId;
+      for (const item of dueReminders(sub.regime, now, sub.sent || {})) {
+        const ok = await sendReminder(chatId, sub.regime, item);
+        if (ok) { sub.sent = sub.sent || {}; sub.sent[item.key] = true; sentCount++; }
+      }
+    }
+    pruneSent(now);
+    saveReminders();
+    if (sentCount) console.log(`[reminders] отправлено напоминаний: ${sentCount}`);
+  } catch (e) {
+    console.log('[reminders] ошибка тика:', e?.message);
+  }
+}
+
 // --- утилиты ---
 function readBody(req) {
   return new Promise((resolve) => {
@@ -374,10 +535,15 @@ function json(res, code, obj) {
 
 server.listen(PORT, () => {
   console.log(`✅ Бот-бэкенд слушает порт ${PORT}`);
-  console.log(`   Версия кода: МЕНЮ-2 (start→разделы, callback_query, админ-команды)`);
+  console.log(`   Версия кода: МЕНЮ-2 + напоминания о сроках`);
   console.log(`   Mini App: ${WEBAPP_URL}`);
+  console.log(`   Подписок на напоминания: ${Object.keys(reminders).length}`);
   console.log(`   Цена Pro: ${PRO_PRICE_RUB} ₽ через ЮKassa (разовая покупка, навсегда)`);
   console.log(`   Платёжный токен ЮKassa: ${PROVIDER_TOKEN ? 'задан ✓' : 'НЕ задан ✗'}`);
   console.log(`\n   Не забудьте установить вебхук:`);
   console.log(`   curl "${API}/setWebhook?url=https://ВАШ_ДОМЕН/webhook/${BOT_TOKEN}"`);
+
+  // Планировщик напоминаний: первый прогон через 20 с после старта, далее раз в 3 часа.
+  setTimeout(runReminderCheck, 20000);
+  setInterval(runReminderCheck, REMINDER_TICK_MS);
 });

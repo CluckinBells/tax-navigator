@@ -3,6 +3,7 @@
 
 import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline } from '../shared/engine.js';
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
+import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -126,6 +127,35 @@ check('декларация: аванс 1 кв стр.020 = 75000', decl.section
 // с работниками — вычет ограничен 50%
 const declEmp = buildUsnIncomeDeclaration({ incomeQ: [1250000, 1250000, 1250000, 1250000], contributionsQ: [0, 0, 0, 300000], employees: 2 });
 check('декларация с работниками: вычет = 50% (150000)', declEmp.section211.l143, 150000);
+
+// --- Эталон 8: логика пуш-напоминаний о сроках ---
+console.log('\nЭталон 8 — напоминания о сроках:');
+// стадии по числу дней до срока (диапазоны дают «догоняющую» логику)
+check('стадия за 7 дней', reminderStage(7), '7');
+check('стадия за 5 дней (догон 7)', reminderStage(5), '7');
+check('стадия за 3 дня', reminderStage(3), '3');
+check('стадия за 2 дня (догон 3)', reminderStage(2), '3');
+check('стадия за 1 день', reminderStage(1), '1');
+check('стадия в день срока', reminderStage(0), '0');
+check('за 8 дней — рано (null)', reminderStage(8), null);
+check('срок прошёл — null', reminderStage(-1), null);
+
+// За неделю до 1 июля (1% взносов) для УСН — должно появиться напоминание стадии '7'
+const weekBefore = new Date('2026-06-24T10:00:00Z'); // ровно 7 дней до 2026-07-01
+const due7 = dueReminders('usn6', weekBefore, {});
+check('за 7 дней до 1 июля есть напоминание', due7.some((d) => d.date === '2026-07-01' && d.stage === '7'), true);
+// уже отправленное напоминание не повторяется
+const due7sent = dueReminders('usn6', weekBefore, { '2026-07-01:7': true });
+check('отправленное напоминание не повторяется', due7sent.some((d) => d.date === '2026-07-01' && d.stage === '7'), false);
+// далеко до срока (3 июня → ближайшее через 28 дней) — напоминаний нет
+check('за 28 дней напоминаний нет', dueReminders('usn6', fixedDay, {}).length, 0);
+
+// человеческие фразы и формат даты
+check('фраза «сегодня»', daysLeftPhrase(0), 'сегодня');
+check('фраза «завтра»', daysLeftPhrase(1), 'завтра');
+check('фраза «через 2 дня»', daysLeftPhrase(2), 'через 2 дня');
+check('фраза «через 5 дней»', daysLeftPhrase(5), 'через 5 дней');
+check('формат даты «1 июл 2026»', formatDateRu('2026-07-01'), '1 июл 2026');
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);
