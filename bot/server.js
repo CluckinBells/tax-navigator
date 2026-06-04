@@ -210,18 +210,82 @@ const server = http.createServer(async (req, res) => {
   json(res, 200, { service: 'tax-navigator-bot', ok: true });
 });
 
+// --- Главное меню бота ---
+const MENU_TEXT =
+  '👋 «Налоговый навигатор ИП 2026»\n\n' +
+  'Сравните 6 налоговых режимов с учётом реформы НДС и узнайте, сколько можно сэкономить. Базовый расчёт — бесплатно.\n\n' +
+  'Выберите раздел:';
+
+const MENU_KEYBOARD = {
+  inline_keyboard: [
+    [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
+    [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Что даёт Pro', callback_data: 'pro' }],
+    [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }],
+    [{ text: '🛡️ О сервисе и контакты', callback_data: 'about' }],
+  ],
+};
+
+// Кнопка «назад в меню» для экранов-разделов.
+const BACK_KEYBOARD = { inline_keyboard: [[{ text: '← Назад в меню', callback_data: 'menu' }]] };
+
+// Тексты разделов меню.
+const SECTIONS = {
+  how:
+    '❓ <b>Как это работает</b>\n\n' +
+    'Откройте калькулятор, введите выручку и расходы за год — сервис сравнит 6 режимов налогообложения (НПД, УСН 6%, УСН 15%, ПСН, АУСН) и покажет самый выгодный.\n\n' +
+    'Возле каждого поля есть подсказка «?» — если что-то непонятно, нажмите её. Заполнять нужно всего 2 главных поля: выручку и расходы.\n\n' +
+    'Расчёт идёт прямо на вашем устройстве — цифры никуда не передаются.',
+  pro:
+    '💎 <b>Что даёт Pro</b> — 1990 ₽, разово, навсегда\n\n' +
+    '🧭 Личная рекомендация словами: что выбрать и почему\n' +
+    '📊 Разбивка нагрузки с графиками (налог, взносы, НДС)\n' +
+    '📈 Сценарии роста и график налоговой кривой\n' +
+    '🎯 Точки перелома — когда менять режим\n' +
+    '📄 PDF-отчёт с логотипом для бухгалтера\n' +
+    '📑 Черновик декларации УСН (КНД 1152017)\n' +
+    '📅 Налоговый календарь под ваш режим\n\n' +
+    'Оформить можно прямо в калькуляторе — откройте его и нажмите на любой Pro-раздел.',
+  dates:
+    '📅 <b>Ключевые налоговые сроки 2026</b> (для ИП)\n\n' +
+    '<b>УСН:</b>\n' +
+    '• 28 апр — аванс за I квартал\n' +
+    '• 28 июл — аванс за полугодие\n' +
+    '• 28 окт — аванс за 9 месяцев\n' +
+    '• 27 апр — декларация УСН за 2025\n\n' +
+    '<b>Страховые взносы ИП:</b>\n' +
+    '• 1 июл — 1% с дохода свыше 300 тыс. за 2025\n' +
+    '• 28 дек — фиксированные взносы за 2026 (57 390 ₽)\n\n' +
+    '<b>Патент:</b> 1/3 в начале срока, остальное — к концу.\n\n' +
+    'В Pro есть персональный календарь под ваш режим с напоминаниями о ближайших датах.',
+  about:
+    '🛡️ <b>О сервисе</b>\n\n' +
+    '«Налоговый навигатор ИП 2026» — сервис для сравнения налоговых режимов ИП с учётом реформы НДС 2026.\n\n' +
+    'Расчёт носит справочный характер и не заменяет консультацию бухгалтера.\n\n' +
+    'По вопросам и обращениям: filimonov.filimonov05@mail.ru\n\n' +
+    'Политика конфиденциальности: ' + WEBAPP_URL.replace('/webapp/index.html', '/landing/privacy.html'),
+};
+
 // --- Обработка апдейтов Telegram ---
 async function handleUpdate(update) {
-  // /start — приветствие + кнопка запуска Mini App
-  if (update.message?.text?.startsWith('/start')) {
-    const chatId = update.message.chat.id;
-    await tg('sendMessage', {
-      chat_id: chatId,
-      text: '👋 Это «Налоговый навигатор ИП 2026».\n\nСравните 6 налоговых режимов с учётом реформы НДС и узнайте, сколько можно сэкономить. Базовый расчёт — бесплатно.',
-      reply_markup: {
-        inline_keyboard: [[{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }]],
-      },
-    });
+  // Нажатие inline-кнопки меню (callback_query)
+  if (update.callback_query) {
+    const cq = update.callback_query;
+    const chatId = cq.message?.chat?.id;
+    const msgId = cq.message?.message_id;
+    const dataKey = cq.data;
+    // Отвечаем Telegram, что нажатие принято (убирает «часики» на кнопке).
+    await tg('answerCallbackQuery', { callback_query_id: cq.id });
+    if (dataKey === 'menu') {
+      await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
+    } else if (SECTIONS[dataKey]) {
+      await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: SECTIONS[dataKey], parse_mode: 'HTML', reply_markup: BACK_KEYBOARD, disable_web_page_preview: true });
+    }
+    return;
+  }
+
+  // /start и /menu — показываем главное меню
+  if (update.message?.text?.startsWith('/start') || update.message?.text?.startsWith('/menu')) {
+    await tg('sendMessage', { chat_id: update.message.chat.id, text: MENU_TEXT, reply_markup: MENU_KEYBOARD });
     return;
   }
 
