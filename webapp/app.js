@@ -751,22 +751,27 @@ $('buyProBtn').addEventListener('click', async () => {
       alertMsg('Сервер не вернул ссылку на оплату. Попробуйте позже.');
       return;
     }
-    // Прячем «Создаём счёт…» — ссылка получена, открываем оплату.
-    const note = $('payNote'); if (note) note.style.display = 'none';
+    const note = $('payNote');
+    // Диагностика v7: показываем версию клиента и факт получения ссылки.
+    if (note) { note.style.display = 'block'; note.textContent = `Открываю оплату… (Telegram ${tg.version || '?'}, openInvoice: ${typeof tg.openInvoice})`; }
 
     // Открываем счёт. openInvoice принимает slug или полную ссылку t.me/$...
-    if (tg.openInvoice) {
-      tg.openInvoice(data.invoiceLink, (status) => {
-        if (status === 'paid') {
-          unlockPro();
-          tg.HapticFeedback?.notificationOccurred?.('success');
-          alertMsg('Pro активирован! Спасибо за покупку 🎉');
-        } else if (status === 'failed') {
-          alertMsg('Оплата не прошла. Попробуйте ещё раз.');
-        } else if (status === 'cancelled') {
-          if (note) note.style.display = 'none';
-        }
-      });
+    if (typeof tg.openInvoice === 'function') {
+      try {
+        tg.openInvoice(data.invoiceLink, (status) => {
+          if (status === 'paid') {
+            unlockPro();
+            tg.HapticFeedback?.notificationOccurred?.('success');
+            alertMsg('Pro активирован! Спасибо за покупку 🎉');
+          } else if (status === 'failed') {
+            alertMsg('Оплата не прошла. Попробуйте ещё раз.');
+          } else if (note) {
+            note.style.display = 'none'; // отмена/закрытие
+          }
+        });
+      } catch (err) {
+        alertMsg('Не удалось открыть окно оплаты: ' + (err?.message || err) + '. Откройте ссылку вручную: ' + data.invoiceLink);
+      }
     } else if (tg.openTelegramLink) {
       // Запасной путь для старых клиентов: открываем счёт как ссылку t.me.
       tg.openTelegramLink(data.invoiceLink);
