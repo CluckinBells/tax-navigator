@@ -59,7 +59,14 @@ async function verifyProWithBackend() {
     });
     if (!res.ok) return;
     const data = await res.json();
+    // Сервер — источник правды по оплате. Но Pro по коду доступа (tn_pro_code)
+    // не отзываем: он не связан с оплатой ЮKassa.
+    const hasValidCode = (() => { try { const c = localStorage.getItem('tn_pro_code'); return c && validateCode(c).valid; } catch (_) { return false; } })();
     if (data.isPro && !isPro) { isPro = true; applyProLock(); recalc(); }
+    else if (!data.isPro && isPro && !hasValidCode) {
+      // Сервер говорит «не Pro» (например, после возврата) — забираем доступ.
+      isPro = false; applyProLock(); recalc();
+    }
   } catch (_) { /* бэкенд недоступен — остаёмся на предварительном статусе */ }
 }
 

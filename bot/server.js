@@ -55,11 +55,26 @@ try {
   if (Array.isArray(raw)) proUsers = new Set(raw.map(String));
   else proUsers = new Set(Object.keys(raw));
 } catch (_) {}
+// Карта «платёж ЮKassa → userId» — чтобы при возврате знать, у кого забрать Pro.
+// ЮKassa в уведомлении о возврате присылает id платежа, а не Telegram userId.
+const PAY_MAP_PATH = process.env.DATA_DIR
+  ? new URL('payments.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
+  : new URL('./payments.json', import.meta.url);
+let payToUser = {};
+try { payToUser = JSON.parse(readFileSync(PAY_MAP_PATH, 'utf8')); } catch (_) {}
+
 function saveDb() {
   try { writeFileSync(DB_PATH, JSON.stringify([...proUsers])); } catch (_) {}
 }
+function savePayMap() {
+  try { writeFileSync(PAY_MAP_PATH, JSON.stringify(payToUser)); } catch (_) {}
+}
 function grantPro(userId) { proUsers.add(String(userId)); saveDb(); }
+function revokePro(userId) { proUsers.delete(String(userId)); saveDb(); }
 function isPro(userId) { return proUsers.has(String(userId)); }
+function rememberPayment(paymentId, userId) {
+  if (paymentId) { payToUser[String(paymentId)] = String(userId); savePayMap(); }
+}
 
 // --- Telegram Bot API helper ---
 async function tg(method, body) {
@@ -156,6 +171,38 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  // 4) Вебхук ЮKassa: уведомление о ВОЗВРАТЕ → автоматически забираем Pro.
+  // Настраивается в ЛК ЮKassa (HTTP-уведомления), событие refund.succeeded.
+  if (req.url === '/yookassa-webhook' && req.method === 'POST') {
+    try {
+      const event = body?.event;
+      const obj = body?.object || {};
+      console.log('[yookassa-webhook] событие:', event, 'платёж:', obj.payment_id || obj.id);
+      if (event === 'refund.succeeded') {
+        // У объекта возврата есть payment_id (id исходного платежа).
+        const paymentId = obj.payment_id;
+        const userId = paymentId ? payToUser[String(paymentId)] : null;
+        if (userId) {
+          revokePro(userId);
+          console.log('[yookassa-webhook] возврат → Pro снят у userId', userId);
+          // уведомим пользователя в чате (необязательно, но вежливо)
+          try {
+            await tg('sendMessage', {
+              chat_id: userId,
+              text: 'Возврат по вашей покупке Pro обработан. Доступ к Pro-функциям отключён. Если это ошибка — напишите нам.',
+            });
+          } catch (_) {}
+        } else {
+          console.log('[yookassa-webhook] возврат, но пользователь не найден по платежу', paymentId);
+        }
+      }
+    } catch (e) {
+      console.log('[yookassa-webhook] ошибка обработки:', e?.message);
+    }
+    // ЮKassa ждёт 200, иначе будет повторять уведомление.
+    return json(res, 200, { ok: true });
+  }
+
   json(res, 200, { service: 'tax-navigator-bot', ok: true });
 });
 
@@ -183,7 +230,11 @@ async function handleUpdate(update) {
   // successful_payment — оплата прошла, выдаём Pro навсегда
   if (update.message?.successful_payment) {
     const userId = update.message.from.id;
+    const sp = update.message.successful_payment;
     grantPro(userId);
+    // Запоминаем id платежа ЮKassa, чтобы при возврате найти этого пользователя.
+    rememberPayment(sp.provider_payment_charge_id, userId);
+    console.log('[payment] Pro выдан userId', userId, 'payment', sp.provider_payment_charge_id);
     await tg('sendMessage', {
       chat_id: update.message.chat.id,
       text: '🎉 Pro активирован навсегда! Открыты детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь и PDF-отчёт.',
