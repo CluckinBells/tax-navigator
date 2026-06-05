@@ -32,7 +32,7 @@ document.addEventListener('click', (e) => {
 // Объявлен в начале файла, т.к. используется в verifyProWithBackend() при инициализации.
 const BACKEND_URL = 'https://nalogovik-cluckin.waw0.amvera.tech';
 // Адрес страницы политики конфиденциальности (тот же домен, где выложена статика).
-const PRIVACY_URL = 'https://cluckinbells.github.io/tax-navigator/privacy.html';
+const PRIVACY_URL = 'https://navnalog.ru/privacy.html';
 
 // --- Инициализация Telegram ---
 let isPro = false;
