@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://cluckinbells.github.io/tax-navigator/landing/index.html</loc>
+    <loc>https://cluckinbells.github.io/tax-navigator/</loc>
     <lastmod>2026-06-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://cluckinbells.github.io/tax-navigator/landing/kak-vybrat-rezhim-ip-2026.html</loc>
+    <loc>https://cluckinbells.github.io/tax-navigator/kak-vybrat-rezhim-ip-2026.html</loc>
     <lastmod>2026-06-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://cluckinbells.github.io/tax-navigator/landing/privacy.html</loc>
+    <loc>https://cluckinbells.github.io/tax-navigator/privacy.html</loc>
     <lastmod>2026-06-05</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

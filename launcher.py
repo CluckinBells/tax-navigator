@@ -22,12 +22,12 @@ FIXED_PORT = 8124  # один фиксированный порт — чтобы
 def is_already_running(port):
     """Уже поднят наш сервер на этом порту? Тогда второй не нужен."""
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/landing/index.html", timeout=2) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/index.html", timeout=2) as r:
             return r.status == 200
     except Exception:
         return False
 
-URL = f"http://localhost:{FIXED_PORT}/landing/index.html"
+URL = f"http://localhost:{FIXED_PORT}/index.html"
 
 # Если сервер уже работает (от прошлого запуска) — просто открываем браузер и выходим.
 if is_already_running(FIXED_PORT):
