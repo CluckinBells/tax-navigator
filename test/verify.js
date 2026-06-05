@@ -4,6 +4,7 @@
 import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline } from '../shared/engine.js';
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
+import { computeSetAside } from '../shared/setaside.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -156,6 +157,22 @@ check('фраза «завтра»', daysLeftPhrase(1), 'завтра');
 check('фраза «через 2 дня»', daysLeftPhrase(2), 'через 2 дня');
 check('фраза «через 5 дней»', daysLeftPhrase(5), 'через 5 дней');
 check('формат даты «1 июл 2026»', formatDateRu('2026-07-01'), '1 июл 2026');
+
+// --- Эталон 9: налоговая подушка (сколько отложить) ---
+console.log('\nЭталон 9 — налоговая подушка:');
+const sa6 = computeSetAside({ regimeId: 'usn6', incomeToDate: 5000000, paid: 0 });
+check('УСН6: отложить = полная нагрузка 300000', sa6.setAside, 300000);
+check('УСН6: налог 195610', sa6.tax, 195610);
+check('УСН6: взносы 104390', sa6.contributions, 104390);
+const sa6paid = computeSetAside({ regimeId: 'usn6', incomeToDate: 5000000, paid: 100000 });
+check('УСН6: уплачено 100к → отложить 200000', sa6paid.setAside, 200000);
+const saPsn = computeSetAside({ regimeId: 'psn', incomeToDate: 5000000, patentAvailable: true, patentCost: 30000 });
+check('ПСН: отложить 104390', saPsn.setAside, 104390);
+const saAusn = computeSetAside({ regimeId: 'ausn8', incomeToDate: 5000000, ausnRegion: true });
+check('АУСН: помечен как авто-списание', saAusn.auto, true);
+const saNpd = computeSetAside({ regimeId: 'npd', incomeToDate: 2000000, individualsShare: 0.3 });
+check('НПД: доступен на 2 млн', saNpd.available, true);
+check('НПД: подсказка про «Мой налог»', saNpd.note.includes('Мой налог'), true);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);

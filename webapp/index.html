@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#4f46e5" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <div class="app">
@@ -115,6 +115,15 @@
       <div id="calContent"></div>
     </section>
 
+    <!-- PRO: налоговая подушка (сколько отложить) -->
+    <section class="card pro-section" id="proSetAside">
+      <div class="card__title">
+        Сколько отложить на налоги
+        <span class="pro-badge" id="setAsideBadge">PRO</span>
+      </div>
+      <div id="setAsideContent"></div>
+    </section>
+
     <!-- PRO: черновик декларации УСН Доходы -->
     <section class="card pro-section" id="proDeclaration">
       <div class="card__title">
@@ -148,6 +157,7 @@
         <li>📄 PDF-отчёт с логотипом для бухгалтера</li>
         <li>📑 Черновик декларации УСН (КНД 1152017)</li>
         <li>📅 Налоговый календарь под ваш режим</li>
+        <li>💰 «Сколько отложить»: налоговая подушка под ваш режим</li>
         <li>🔔 Напоминания о сроках в Telegram под ваш режим</li>
         <li>🔄 Обновления ставок и лимитов на 2026</li>
       </ul>
@@ -167,6 +177,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=11"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>

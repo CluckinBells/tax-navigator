@@ -5,6 +5,8 @@ import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.j
 import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js';
 import { validateCode } from '../shared/codes.js';
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
+import { computeSetAside } from '../shared/setaside.js';
+import { formatDateRu } from '../shared/reminders.js';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -212,6 +214,7 @@ function recalc() {
     renderDetail(res);
     renderScenarios(input);
     renderCalendar(res);
+    renderSetAside(res, input);
     renderDeclaration(res, input);
   }
 }
@@ -560,6 +563,102 @@ function renderCalendar(res) {
     `<p class="cal-note">Сроки для режима «${escapeHtml(res.best.name)}». При совпадении с выходным дата переносится на ближайший рабочий день.</p>`;
 }
 
+// --- PRO: налоговая подушка (сколько отложить на налоги) ---
+// Состояние храним отдельно, чтобы ручные правки не сбрасывались при пересчёте.
+let setAsideState = null;
+
+function renderSetAside(res, input) {
+  const el = $('setAsideContent');
+  if (!el) return;
+  const regimeId = res.best ? res.best.id : 'usn6';
+  const profitBased = regimeId === 'usn15' || regimeId === 'ausn20';
+
+  // Инициализируем из основного расчёта; пересоздаём, если сменился лучший режим.
+  if (!setAsideState || setAsideState.regimeId !== regimeId) {
+    setAsideState = {
+      regimeId,
+      incomeToDate: input.revenue || 0,
+      expensesToDate: input.expenses || 0,
+      paid: 0,
+    };
+  }
+
+  const expRow = profitBased
+    ? `<label class="sa-cell"><span>Расходы с начала года, ₽</span>
+        <input type="text" inputmode="numeric" id="saExpenses" value="${setAsideState.expensesToDate ? setAsideState.expensesToDate.toLocaleString('ru-RU') : ''}" /></label>`
+    : '';
+
+  el.innerHTML =
+    `<p class="sa-hint">Введите доход с начала года — покажем, сколько держать отложенным на налоги под режим «${escapeHtml(res.best ? res.best.name : '—')}».</p>` +
+    `<div class="sa-grid">` +
+      `<label class="sa-cell"><span>Доход с начала года, ₽</span>
+        <input type="text" inputmode="numeric" id="saIncome" value="${setAsideState.incomeToDate ? setAsideState.incomeToDate.toLocaleString('ru-RU') : ''}" /></label>` +
+      expRow +
+      `<label class="sa-cell"><span>Уже уплачено в этом году, ₽</span>
+        <input type="text" inputmode="numeric" id="saPaid" value="${setAsideState.paid ? setAsideState.paid.toLocaleString('ru-RU') : ''}" /></label>` +
+    `</div>` +
+    `<div id="saResult"></div>`;
+
+  const onInput = () => {
+    setAsideState.incomeToDate = parseMoney($('saIncome').value);
+    if ($('saExpenses')) setAsideState.expensesToDate = parseMoney($('saExpenses').value);
+    setAsideState.paid = parseMoney($('saPaid').value);
+    updateSetAside(input);
+  };
+  el.querySelectorAll('#saIncome, #saExpenses, #saPaid').forEach((inp) => inp.addEventListener('input', onInput));
+  updateSetAside(input);
+}
+
+function updateSetAside(input) {
+  const el = $('saResult');
+  if (!el || !setAsideState) return;
+  const s = computeSetAside({
+    regimeId: setAsideState.regimeId,
+    incomeToDate: setAsideState.incomeToDate,
+    expensesToDate: setAsideState.expensesToDate,
+    paid: setAsideState.paid,
+    individualsShare: input.individualsShare,
+    employees: input.employees,
+    ausnRegion: input.ausnRegion,
+    patentAvailable: input.patentAvailable,
+    patentCost: input.patentCost,
+  });
+
+  if (!s.available) {
+    el.innerHTML = `<p class="sa-note">На доход ${formatMoney(setAsideState.incomeToDate)} режим «${escapeHtml(s.regimeName)}» недоступен (вероятно, превышен лимит). Измените параметры в форме выше.</p>`;
+    return;
+  }
+  if (s.auto) {
+    el.innerHTML =
+      `<div class="sa-auto">⚙️ На АУСН налог считает банк и списывает автоматически — отдельно откладывать не нужно.</div>` +
+      `<p class="sa-note">${escapeHtml(s.note)}</p>`;
+    return;
+  }
+
+  const events = getTaxCalendar(setAsideState.regimeId, new Date());
+  const next = events.find((e) => !e.isPast) || null;
+  const pct = s.effectiveRate != null ? ` · ${formatPercent(s.effectiveRate)} от дохода` : '';
+  const breakdown = [
+    s.tax > 0 ? `<span class="sa-chip">налог ${formatMoney(s.tax)}</span>` : '',
+    s.contributions > 0 ? `<span class="sa-chip">взносы ${formatMoney(s.contributions)}</span>` : '',
+    s.vat > 0 ? `<span class="sa-chip">НДС ${formatMoney(s.vat)}</span>` : '',
+  ].filter(Boolean).join('');
+  const paidLine = s.paid > 0
+    ? `<div class="sa-sub">Полная нагрузка ${formatMoney(s.burden)} − уплачено ${formatMoney(s.paid)}</div>` : '';
+  const nextLine = next
+    ? `<div class="sa-next">📅 Ближайший платёж: <b>${escapeHtml(next.title)}</b> — ${formatDateRu(next.date)} (${next.daysLeft === 0 ? 'сегодня' : next.daysLeft === 1 ? 'завтра' : 'через ' + next.daysLeft + ' дн.'}).</div>` : '';
+
+  el.innerHTML =
+    `<div class="sa-big"><span class="sa-big__label">Отложите на налоги</span>` +
+    `<span class="sa-big__val">${formatMoney(s.setAside)}</span>` +
+    `<span class="sa-big__sub">с дохода ${formatMoney(setAsideState.incomeToDate)}${pct}</span></div>` +
+    paidLine +
+    (breakdown ? `<div class="sa-chips">${breakdown}</div>` : '') +
+    nextLine +
+    `<p class="sa-note">${escapeHtml(s.note)}</p>` +
+    `<p class="sa-disclaimer">Ориентир: точная сумма авансов зависит от того, когда вы платите взносы. Не заменяет расчёт бухгалтера.</p>`;
+}
+
 // --- PRO: черновик декларации УСН «Доходы» ---
 // Состояние храним отдельно, чтобы поквартальный ввод не сбрасывался при пересчёте.
 let declState = null;
@@ -713,6 +812,7 @@ function applyProLock() {
     proDetail: 'detailContent',
     proScenarios: 'scenContent',
     proCalendar: 'calContent',
+    proSetAside: 'setAsideContent',
     proDeclaration: 'declContent',
   };
   Object.entries(sections).forEach(([id, target]) => {
