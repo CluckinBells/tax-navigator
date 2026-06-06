@@ -120,6 +120,8 @@ img, svg { display: block; }
 .tg-handle { color: var(--brand-ink); font-weight: 700; }
 .tg-handle:hover { text-decoration: underline; }
 .footer__handle { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
+.footer__legal { margin-top: 10px; font-size: 12.5px; color: var(--ink-mute); line-height: 1.55; }
+.footer__legal a { color: var(--ink-soft); }
 
 /* Превью карточки */
 .hero__preview { display: grid; place-items: center; }
