@@ -418,107 +418,25 @@ function shortName(id) {
   return { npd: 'НПД', usn6: 'УСН 6%', usn15: 'УСН 15%', psn: 'ПСН', ausn8: 'АУСН 8%', ausn20: 'АУСН 20%' }[id] || id;
 }
 
-// --- PDF-отчёт (Pro) ---
-// Печатаем расчёт через окно печати браузера → «Сохранить как PDF».
-// Работает и в Telegram, и в обычном браузере, без внешних библиотек.
+// --- PDF-отчёт и черновик декларации (Pro) ---
+// Документ формируется на отдельной странице print.html и открывается в НАСТОЯЩЕМ браузере
+// через tg.openLink. В WebView Telegram window.open('','_blank') даёт пустую вкладку, поэтому
+// данные передаём в print.html через hash, а печать («Сохранить как PDF») делает уже браузер.
+function openPrintable(type, payload) {
+  let enc;
+  try {
+    enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); // base64url — безопасно в hash
+  } catch (e) { tg?.showAlert?.('Не удалось сформировать документ.'); return; }
+  const url = new URL('print.html', location.href);
+  url.hash = `t=${type}&d=${enc}`;
+  if (tg?.openLink) tg.openLink(url.href);
+  else window.open(url.href, '_blank');
+}
+
 function exportPdf() {
-  if (!lastResult) return;
-  const res = lastResult, input = lastInput;
-  const avail = res.regimes.filter((r) => r.available);
-  const maxTotal = Math.max(...avail.map((r) => r.total), 1);
-
-  // Строки таблицы с мини-баром нагрузки прямо в ячейке.
-  const rows = [...res.regimes]
-    .sort((a, b) => (a.available !== b.available ? (a.available ? -1 : 1) : a.total - b.total))
-    .map((r) => {
-      if (!r.available) {
-        const why = (r.reasons && r.reasons[0]) ? r.reasons[0] : 'недоступен';
-        return `<tr class="off"><td>${r.name}</td><td colspan="4">${why}</td></tr>`;
-      }
-      const best = res.best && r.id === res.best.id;
-      const w = (r.total / maxTotal) * 100;
-      return `<tr class="${best ? 'b' : ''}">
-        <td>${r.name}${best ? ' <span class="tag">лучший</span>' : ''}</td>
-        <td>${formatMoney(r.tax)}</td>
-        <td>${formatMoney(r.contributions)}</td>
-        <td>${formatMoney(r.vat)}</td>
-        <td><b>${formatMoney(r.total)}</b><div class="minibar"><i style="width:${w}%"></i></div></td>
-      </tr>`;
-    }).join('');
-
-  // Сценарии роста для отчёта.
-  const pts = [input.revenue, input.revenue * 3, input.revenue * 6].map((v) => Math.round(v));
-  const sweep = breakevenSweep({ ...input, expenseShare: input.revenue > 0 ? input.expenses / input.revenue : 0.4 }, pts);
-  const scenRows = sweep.map((s, i) => `<tr><td>${['Сейчас', 'Через год-два', 'Долгосрочно'][i]} · ${formatShort(pts[i])}</td><td>${s.best ? s.best.name : '—'}</td><td><b>${formatMoney(s.minTotal)}</b></td><td>${formatPercent(s.effectiveRate)}</td></tr>`).join('');
-  const bp = sweep.find((s) => s.isBreakpoint);
-
-  const verdict = res.best
-    ? `Оптимальный режим — <b>${res.best.name}</b> с нагрузкой ${formatMoney(res.best.total)} в год` +
-      (res.savings > 0 ? `. Экономия до ${formatMoney(res.savings)} по сравнению с самым невыгодным вариантом.` : '.') +
-      (bp && bp.best ? ` При росте выручки до ~${formatShort(bp.revenue)} стоит перейти на ${bp.best.name}.` : '')
-    : 'При указанных параметрах ни один режим не доступен.';
-
-  const today = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
-
-  // Логотип-знак как inline SVG (не зависит от сети при печати).
-  const logoSvg = `<svg width="40" height="40" viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#g)"/><path d="M5 16l4-4 3 3 6-7" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8h4v4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-  const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Налоговый отчёт ИП — ${today}</title>
-  <style>
-    *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f1120;padding:0;margin:0}
-    .page{max-width:780px;margin:0 auto;padding:40px 44px}
-    .head{display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:2px solid #ece9fb}
-    .head .brand{font-size:18px;font-weight:800;letter-spacing:-.01em}
-    .head .meta{margin-left:auto;text-align:right;font-size:12px;color:#7c809a}
-    h1{font-size:20px;margin:24px 0 2px;letter-spacing:-.01em}
-    .lead{color:#6b7090;font-size:13px;margin-bottom:22px}
-    .verdict{background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;border-radius:14px;padding:20px 22px;margin-bottom:24px}
-    .verdict .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;font-weight:700}
-    .verdict .big{font-size:24px;font-weight:800;margin:6px 0}
-    .verdict p{font-size:13.5px;line-height:1.55;margin:8px 0 0;opacity:.96}
-    .params{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;background:#f7f8fc;border-radius:12px;padding:16px 20px;margin-bottom:26px;font-size:13.5px}
-    .params div{display:flex;justify-content:space-between}.params span{color:#6b7090}
-    h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#6b7090;margin:26px 0 10px}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{padding:10px 8px;text-align:right;border-bottom:1px solid #ececf4;vertical-align:top}
-    th:first-child,td:first-child{text-align:left} th{color:#9095ad;font-size:10.5px;text-transform:uppercase;font-weight:700}
-    tr.b td{background:#f1fbf6} tr.b{font-weight:600} tr.off{color:#a6abc2}
-    .tag{font-size:9.5px;font-weight:800;color:#fff;background:#10b981;padding:1px 6px;border-radius:99px;vertical-align:middle}
-    .minibar{height:5px;background:#eef0f7;border-radius:99px;margin-top:5px;overflow:hidden}
-    .minibar i{display:block;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7)}
-    .foot{margin-top:30px;padding-top:16px;border-top:1px solid #ececf4;font-size:10.5px;color:#9095ad;line-height:1.6}
-    @media print{.page{padding:24px}}
-  </style></head><body><div class="page">
-    <div class="head">${logoSvg}<div class="brand">Налоговый навигатор<br><span style="font-size:11px;font-weight:500;color:#7c809a">ИП · 2026</span></div>
-      <div class="meta">Отчёт от ${today}<br>${input.employees != null ? '' : ''}</div></div>
-
-    <h1>Сравнение налоговых режимов</h1>
-    <div class="lead">Персональный расчёт на основе ваших показателей за год</div>
-
-    ${res.best ? `<div class="verdict"><div class="lbl">Рекомендация</div><div class="big">${res.best.name}</div><p>${verdict}</p></div>` : ''}
-
-    <div class="params">
-      <div><span>Выручка за год</span><b>${formatMoney(input.revenue)}</b></div>
-      <div><span>Расходы за год</span><b>${formatMoney(input.expenses)}</b></div>
-      <div><span>Доля выручки от физлиц</span><b>${Math.round(input.individualsShare * 100)}%</b></div>
-      <div><span>Наёмных работников</span><b>${input.employees}</b></div>
-    </div>
-
-    <h2>Все режимы</h2>
-    <table><tr><th>Режим</th><th>Налог</th><th>Взносы</th><th>НДС</th><th>Итого нагрузка</th></tr>${rows}</table>
-
-    <h2>Прогноз при росте выручки</h2>
-    <table><tr><th>Сценарий</th><th>Лучший режим</th><th>Налог в год</th><th>Ставка</th></tr>${scenRows}</table>
-
-    <div class="foot">Расчёт упрощён и носит справочный характер; не является индивидуальной налоговой консультацией.
-    Не учитывает торговый сбор, региональные пониженные ставки и специфику отдельных видов деятельности.
-    Основано на НК РФ (гл. 26.2, 26.5, 26.7, 26.8) и ФЗ от 28.11.2025 № 425-ФЗ.
-    Сформировано сервисом «Налоговый навигатор ИП 2026».</div>
-  </div></body></html>`;
-
-  const w = window.open('', '_blank');
-  if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 350); }
-  else { tg?.showAlert?.('Разрешите всплывающие окна, чтобы сохранить PDF.'); }
+  if (!lastInput) return;
+  openPrintable('report', lastInput);
 }
 
 // --- PRO: налоговый календарь под лучший режим ---
@@ -734,77 +652,7 @@ function updateDeclSum() {
 
 function exportDeclaration() {
   if (!declState) return;
-  const d = buildUsnIncomeDeclaration(declState);
-  const s21 = d.section211, s11 = d.section11;
-  const today = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
-  const m = (v) => formatMoney(v);
-
-  const line = (code, name, val) => `<tr><td class="c">${code}</td><td>${name}</td><td class="v">${m(val)}</td></tr>`;
-
-  const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Черновик декларации УСН — ${today}</title>
-  <style>
-    *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f1120;margin:0}
-    .page{max-width:780px;margin:0 auto;padding:38px 44px}
-    .warn{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;font-size:12.5px;color:#92400e;margin-bottom:22px}
-    h1{font-size:20px;margin:0 0 2px} .sub{color:#6b7090;font-size:13px;margin-bottom:8px}
-    .knd{font-size:12px;color:#9095ad;margin-bottom:22px}
-    h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7090;margin:24px 0 8px;border-bottom:2px solid #ece9fb;padding-bottom:6px}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    td{padding:8px 8px;border-bottom:1px solid #ececf4} td.c{width:64px;color:#9095ad;font-weight:700} td.v{text-align:right;font-weight:700;white-space:nowrap}
-    .params{background:#f7f8fc;border-radius:10px;padding:14px 18px;margin-bottom:8px;font-size:13px}
-    .params div{display:flex;justify-content:space-between;padding:2px 0} .params span{color:#6b7090}
-    .total{background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;border-radius:12px;padding:16px 20px;margin-top:20px}
-    .total .t{font-size:24px;font-weight:800}
-    .foot{margin-top:26px;padding-top:14px;border-top:1px solid #ececf4;font-size:10.5px;color:#9095ad;line-height:1.6}
-  </style></head><body><div class="page">
-    <div class="warn">⚠️ Это <b>черновик для самопроверки</b>, а не готовая к подаче декларация. Перед сдачей сверьте данные и заполните официальную форму в Личном кабинете ФНС или у бухгалтера.</div>
-    <h1>Декларация по УСН «Доходы» — черновик</h1>
-    <div class="sub">Объект налогообложения: Доходы · ставка ${s21.l120}%${d.meta.hasEmployees ? ' · с работниками' : ' · без работников'}</div>
-    <div class="knd">Форма по КНД 1152017 (${d.meta.form}) · подготовлено ${today}</div>
-
-    <div class="params">
-      <div><span>Доход за год</span><b>${m(d.totals.incomeYear)}</b></div>
-      <div><span>Страховые взносы за год</span><b>${m(d.totals.contributionsYear)}</b></div>
-    </div>
-
-    <h2>Раздел 2.1.1 — расчёт налога</h2>
-    <table>
-      ${line('110', 'Доходы за I квартал', s21.l110)}
-      ${line('111', 'Доходы за полугодие', s21.l111)}
-      ${line('112', 'Доходы за 9 месяцев', s21.l112)}
-      ${line('113', 'Доходы за год', s21.l113)}
-      <tr><td class="c">120–123</td><td>Ставка налога</td><td class="v">${s21.l120}%</td></tr>
-      ${line('130', 'Исчислено налога за I квартал', s21.l130)}
-      ${line('131', 'Исчислено за полугодие', s21.l131)}
-      ${line('132', 'Исчислено за 9 месяцев', s21.l132)}
-      ${line('133', 'Исчислено за год', s21.l133)}
-      ${line('140', 'Вычет взносов за I квартал', s21.l140)}
-      ${line('141', 'Вычет за полугодие', s21.l141)}
-      ${line('142', 'Вычет за 9 месяцев', s21.l142)}
-      ${line('143', 'Вычет за год', s21.l143)}
-    </table>
-
-    <h2>Раздел 1.1 — налог к уплате</h2>
-    <table>
-      ${line('020', 'Аванс к уплате за I квартал', s11.l020)}
-      ${line('040', 'Аванс к уплате за полугодие', s11.l040)}
-      ${s11.l050 ? line('050', 'К уменьшению за полугодие', s11.l050) : ''}
-      ${line('070', 'Аванс к уплате за 9 месяцев', s11.l070)}
-      ${s11.l080 ? line('080', 'К уменьшению за 9 месяцев', s11.l080) : ''}
-      ${line('100', 'Налог к доплате за год', s11.l100)}
-      ${s11.l110 ? line('110', 'Налог к уменьшению за год', s11.l110) : ''}
-    </table>
-
-    <div class="total"><div>Итого налог УСН к уплате за год</div><div class="t">${m(d.totals.taxToPayYear)}</div></div>
-
-    <div class="foot">Черновик сформирован сервисом «Налоговый навигатор ИП 2026» и носит справочный характер.
-    Не является поданной декларацией и не заменяет официальную отчётность. Проверьте суммы и реквизиты (ИНН, ОКТМО, код ИФНС)
-    перед подачей. Основано на форме КНД 1152017 (${d.meta.form}).</div>
-  </div></body></html>`;
-
-  const w = window.open('', '_blank');
-  if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 350); }
-  else { tg?.showAlert?.('Разрешите всплывающие окна, чтобы сохранить черновик.'); }
+  openPrintable('decl', declState);
 }
 
 // --- Управление Pro-замком ---

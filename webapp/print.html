@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Документ — Налоговый навигатор</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+           background: #0a0b14; color: #cdd2ee; }
+    .loading { max-width: 520px; margin: 18vh auto; padding: 0 24px; text-align: center; }
+    .loading h1 { font-size: 18px; color: #f1f3fb; margin: 0 0 8px; }
+    .loading p { font-size: 14px; line-height: 1.6; color: #969cc8; }
+    .loading a { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <div class="loading" id="status">
+    <h1>Готовим документ…</h1>
+    <p>Если страница не открылась — вернитесь в приложение и попробуйте ещё раз.</p>
+  </div>
+
+  <script type="module">
+    import { calculateAll } from '../shared/engine.js';
+    import { buildReportHtml } from '../shared/report.js';
+    import { buildDeclarationHtml } from '../shared/declaration.js';
+
+    function fail(msg) {
+      document.getElementById('status').innerHTML =
+        '<h1>Не удалось открыть документ</h1><p>' + msg +
+        '</p><p>Вернитесь в приложение «Налоговый навигатор» и сформируйте документ заново.</p>';
+    }
+
+    try {
+      const p = new URLSearchParams(location.hash.slice(1));
+      const type = p.get('t');
+      const raw = p.get('d');
+      if (!type || !raw) { fail('Нет данных для отчёта.'); throw 0; }
+
+      // base64url → JSON (с поддержкой кириллицы)
+      const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+
+      let doc;
+      if (type === 'report') {
+        doc = buildReportHtml(payload, calculateAll(payload));
+      } else if (type === 'decl') {
+        doc = buildDeclarationHtml(payload);
+      } else {
+        fail('Неизвестный тип документа.'); throw 0;
+      }
+
+      // Панель действий + авто-печать + скрытие панели при печати (внедряем в готовый документ).
+      const bar =
+        '<div id="tn-bar"><button id="tn-print" onclick="window.print()">🖨 Сохранить в PDF</button>' +
+        '<span class="tn-hint">Выберите «Сохранить как PDF» в окне печати</span></div>';
+      const styles =
+        '<style>' +
+        '@media screen{body{background:#0a0b14!important}.page{background:#fff;margin:18px auto;border-radius:10px;' +
+        'box-shadow:0 8px 40px rgba(0,0,0,.45)}}' +
+        '#tn-bar{position:sticky;top:0;z-index:9;display:flex;gap:14px;align-items:center;justify-content:center;' +
+        'flex-wrap:wrap;padding:12px;background:#0a0b14;font-family:-apple-system,Segoe UI,Roboto,sans-serif}' +
+        '#tn-print{font:600 15px/1 inherit;color:#fff;background:linear-gradient(135deg,#6366f1,#a855f7);' +
+        'border:0;border-radius:11px;padding:12px 22px;cursor:pointer}' +
+        '.tn-hint{font-size:12.5px;color:#969cc8}' +
+        '@media print{#tn-bar{display:none!important}.page{margin:0!important;box-shadow:none!important;border-radius:0!important}}' +
+        '</style>';
+      const autoprint = '<script>setTimeout(function(){try{window.print()}catch(e){}},700)<\/script>';
+
+      doc = doc
+        .replace('</head>', styles + '</head>')
+        .replace('<body>', '<body>' + bar)
+        .replace('</body>', autoprint + '</body>');
+
+      document.open();
+      document.write(doc);
+      document.close();
+    } catch (e) {
+      if (e !== 0) fail('Ошибка при формировании документа.');
+    }
+  </script>
+  <noscript>
+    <div class="loading"><h1>Нужен JavaScript</h1><p>Включите JavaScript, чтобы открыть документ.</p></div>
+  </noscript>
+</body>
+</html>
