@@ -240,7 +240,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-06-gh1' });
 });
 
 // --- Главное меню бота ---
