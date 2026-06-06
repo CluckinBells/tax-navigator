@@ -22,6 +22,9 @@ import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.
 // с ошибкой "Unsupported URL protocol" (видит протокол как '\thttps').
 const BOT_TOKEN = (process.env.BOT_TOKEN || '').trim();
 const WEBAPP_URL = (process.env.WEBAPP_URL || 'https://example.com/webapp/index.html').trim();
+// Явная ссылка на политику конфиденциальности — не выводим из WEBAPP_URL, чтобы не зависеть
+// от его формата/домена. По умолчанию — наш домен; можно переопределить переменной окружения.
+const PRIVACY_URL = (process.env.PRIVACY_URL || 'https://navnalog.ru/privacy.html').trim();
 // Прямая ссылка на Mini App (t.me/бот/коротыш) — для кнопок в напоминаниях.
 // url-кнопка надёжнее web_app-кнопки и открывает приложение из любого сообщения.
 const MINIAPP_LINK = (process.env.MINIAPP_LINK || 'https://t.me/taxes_navigator_bot/calc').trim();
@@ -294,7 +297,7 @@ const SECTIONS = {
     '«Налоговый навигатор ИП 2026» — сервис для сравнения налоговых режимов ИП с учётом реформы НДС 2026.\n\n' +
     'Расчёт носит справочный характер и не заменяет консультацию бухгалтера.\n\n' +
     'По вопросам и обращениям: filimonov.filimonov05@mail.ru\n\n' +
-    'Политика конфиденциальности: ' + WEBAPP_URL.replace('/webapp/index.html', '/privacy.html'),
+    'Политика конфиденциальности: ' + PRIVACY_URL,
 };
 
 // --- Экраны раздела «Напоминания» (возвращают { text, keyboard }) ---
