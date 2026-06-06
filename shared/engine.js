@@ -174,13 +174,13 @@ function regime(id, name, available, { tax, contributions, vat, note, reasons })
  */
 export function calculateAll(input, p = PARAMS_2026) {
   const normalized = {
-    revenue: num(input.revenue),
-    expenses: num(input.expenses),
+    revenue: Math.max(0, num(input.revenue)),
+    expenses: Math.max(0, num(input.expenses)),
     individualsShare: clamp01(num(input.individualsShare)),
     employees: Math.max(0, Math.floor(num(input.employees))),
     ausnRegion: !!input.ausnRegion,
     patentAvailable: !!input.patentAvailable,
-    patentCost: num(input.patentCost),
+    patentCost: Math.max(0, num(input.patentCost)),
   };
 
   const regimes = [

@@ -83,15 +83,12 @@ async function verifyProWithBackend() {
 
 function detectProFromLaunch() {
   try {
-    const params = new URLSearchParams(location.search);
-    if (params.get('pro') === '1') return true;
-    const sp = tg?.initDataUnsafe?.start_param;
-    if (sp && sp.includes('pro')) return true;
-    // Ранее активированный код доступа на этом устройстве.
+    // Предварительный Pro даём ТОЛЬКО по ранее активированному коду доступа на этом
+    // устройстве. Параметры ?pro=1 / start_param с 'pro' УБРАНЫ — это был бесплатный
+    // обход оплаты (Pro-контент считается на клиенте). Источник правды по оплате — /me.
     const saved = localStorage.getItem(PRO_CODE_KEY);
     if (saved && validateCode(saved).valid) return true;
   } catch (_) {}
-  // Локальный режим разработки (вне Telegram) — для отладки можно открыть ?pro=1
   return false;
 }
 
