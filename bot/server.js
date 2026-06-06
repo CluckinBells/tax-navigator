@@ -281,7 +281,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-06-gh3' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-07-gh4' });
 });
 
 // --- Главное меню бота ---
@@ -293,6 +293,7 @@ const MENU_TEXT =
 const MENU_KEYBOARD = {
   inline_keyboard: [
     [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
+    [{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽ навсегда`, callback_data: 'buy_pro' }],
     [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Что даёт Pro', callback_data: 'pro' }],
     [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }, { text: '🔔 Напоминания', callback_data: 'reminders' }],
     [{ text: '🛡️ О сервисе и контакты', callback_data: 'about' }],
@@ -301,6 +302,53 @@ const MENU_KEYBOARD = {
 
 // Кнопка «назад в меню» для экранов-разделов.
 const BACK_KEYBOARD = { inline_keyboard: [[{ text: '← Назад в меню', callback_data: 'menu' }]] };
+
+// Отправка инвойса ЮKassa прямо в чат бота (кнопка «Купить Pro»). Те же параметры, что и
+// в Mini App (/create-invoice). Оплата завершается через pre_checkout + successful_payment.
+async function sendProInvoice(chatId, userId) {
+  if (isPro(userId)) {
+    await tg('sendMessage', {
+      chat_id: chatId,
+      text: '✅ У вас уже есть Pro — доступ навсегда. Откройте калькулятор, все функции активны.',
+      reply_markup: { inline_keyboard: [
+        [{ text: '🚀 Открыть Pro', web_app: { url: WEBAPP_URL } }],
+        [{ text: '← В меню', callback_data: 'menu' }],
+      ] },
+    });
+    return;
+  }
+  if (!PROVIDER_TOKEN) {
+    await tg('sendMessage', { chat_id: chatId, text: 'Оплата временно недоступна, попробуйте позже.' });
+    return;
+  }
+  const r = await tg('sendInvoice', {
+    chat_id: chatId,
+    title: 'Налоговый навигатор Pro',
+    description: 'Разовый доступ навсегда: детальная разбивка, сценарии роста, точки перелома, черновик декларации УСН, налоговый календарь, напоминания и PDF-отчёт.',
+    payload: `pro_${userId}_${Date.now()}`,
+    provider_token: PROVIDER_TOKEN,
+    currency: 'RUB',
+    prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_RUB * 100 }],
+    need_email: true,
+    send_email_to_provider: true,
+    provider_data: JSON.stringify({
+      receipt: {
+        items: [{
+          description: 'Налоговый навигатор Pro',
+          quantity: '1.00',
+          amount: { value: PRO_PRICE_RUB.toFixed(2), currency: 'RUB' },
+          vat_code: VAT_CODE,
+          payment_mode: 'full_payment',
+          payment_subject: 'service',
+        }],
+      },
+    }),
+  });
+  if (!r.ok) {
+    console.log('[buy_pro] sendInvoice ошибка:', JSON.stringify(r).slice(0, 300));
+    await tg('sendMessage', { chat_id: chatId, text: 'Не удалось открыть оплату. Попробуйте ещё раз чуть позже.' });
+  }
+}
 
 // Тексты разделов меню.
 const SECTIONS = {
@@ -424,6 +472,9 @@ async function handleUpdate(update) {
     // Отвечаем Telegram, что нажатие принято (убирает «часики» на кнопке).
     await tg('answerCallbackQuery', { callback_query_id: cq.id });
 
+    // Купить Pro — отправляем инвойс ЮKassa прямо в чат бота.
+    if (dataKey === 'buy_pro') { await sendProInvoice(chatId, userId); return; }
+
     // Раздел «Напоминания»: статус / выбор режима / включение / выключение.
     if (dataKey === 'reminders' || dataKey === 'reminders_pick' || dataKey === 'rem_off' || dataKey.startsWith('rem_set_')) {
       let screen;
@@ -445,6 +496,8 @@ async function handleUpdate(update) {
       // У раздела «Сроки 2026» добавляем кнопку включения напоминаний.
       const kb = dataKey === 'dates'
         ? { inline_keyboard: [[{ text: '🔔 Включить напоминания', callback_data: 'reminders' }], [{ text: '← Назад в меню', callback_data: 'menu' }]] }
+        : dataKey === 'pro'
+        ? { inline_keyboard: [[{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽`, callback_data: 'buy_pro' }], [{ text: '← Назад в меню', callback_data: 'menu' }]] }
         : BACK_KEYBOARD;
       await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: SECTIONS[dataKey], parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
     }
