@@ -43,6 +43,10 @@ const PROVIDER_TOKEN = (process.env.PROVIDER_TOKEN || '').trim();
 const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 1990);
 // Ставка НДС для чека 54-ФЗ: 1 = без НДС (для ИП на УСН/НПД). См. ЛК ЮKassa.
 const VAT_CODE = Number(process.env.VAT_CODE || 1);
+// Секрет аутентификации вебхука ЮKassa (refund). ЮKassa должна слать на URL с ?s=<этот секрет>.
+// Если не задан — вебхук ЮKassa отклоняется (авто-revoke при возврате выключен; возврат можно
+// оформить вручную через /admin). Защита от подделки refund→revokePro.
+const YOOKASSA_WEBHOOK_SECRET = (process.env.YOOKASSA_WEBHOOK_SECRET || '').trim();
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 // Секрет верификации вебхука: Telegram возвращает его в заголовке X-Telegram-Bot-Api-Secret-Token.
 // Детерминированно выводим из BOT_TOKEN — отдельная env-переменная не нужна; бот сам ставит его
@@ -240,7 +244,14 @@ const server = http.createServer(async (req, res) => {
 
   // 4) Вебхук ЮKassa: уведомление о ВОЗВРАТЕ → автоматически забираем Pro.
   // Настраивается в ЛК ЮKassa (HTTP-уведомления), событие refund.succeeded.
-  if (req.url === '/yookassa-webhook' && req.method === 'POST') {
+  if (req.method === 'POST' && (req.url === '/yookassa-webhook' || req.url.startsWith('/yookassa-webhook?'))) {
+    // Аутентификация: ЮKassa шлёт на URL с секретом (?s=<YOOKASSA_WEBHOOK_SECRET>). Без заданного
+    // секрета или при несовпадении — отклоняем (иначе любой POST мог снять Pro у пользователя).
+    const provided = (() => { const i = req.url.indexOf('?s='); return i >= 0 ? decodeURIComponent(req.url.slice(i + 3).split('&')[0]) : (req.headers['x-webhook-secret'] || ''); })();
+    if (!YOOKASSA_WEBHOOK_SECRET || provided !== YOOKASSA_WEBHOOK_SECRET) {
+      console.log('[yookassa-webhook] отклонён: неверный или отсутствующий секрет');
+      return json(res, 403, { ok: false });
+    }
     try {
       const event = body?.event;
       const obj = body?.object || {};
@@ -270,7 +281,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-06-gh2' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-06-gh3' });
 });
 
 // --- Главное меню бота ---
