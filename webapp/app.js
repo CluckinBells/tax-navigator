@@ -34,6 +34,13 @@ const BACKEND_URL = 'https://nalogovik-cluckin.waw0.amvera.tech';
 // Адрес страницы политики конфиденциальности (тот же домен, где выложена статика).
 const PRIVACY_URL = 'https://navnalog.ru/privacy.html';
 
+// ВАЖНО: эти константы объявлены ДО блока инициализации ниже. Иначе detectProFromLaunch()
+// и verifyProWithBackend(), вызываемые при запуске, читают их в «мёртвой зоне» (TDZ) и падают —
+// из-за этого Pro не подхватывался с сервера при запуске (приходилось жать «оплатить», чтобы
+// /create-invoice вернул alreadyPro и Pro появлялся). Это и был баг с пропадающим Pro.
+const BACKEND_READY = !BACKEND_URL.includes('example.com'); // бэкенд настроен (адрес не заглушка)
+const PRO_CODE_KEY = 'tn_pro_code'; // ключ сохранённого кода доступа в localStorage
+
 // --- Инициализация Telegram ---
 let isPro = false;
 if (tg) {
@@ -46,9 +53,6 @@ if (tg) {
   // Достоверный Pro-статус — с бэкенда по подписи initData (см. bot/server.js).
   verifyProWithBackend();
 }
-
-// Бэкенд считается настроенным, только если адрес заменён с заглушки на реальный.
-const BACKEND_READY = !BACKEND_URL.includes('example.com');
 
 // Включение напоминаний: deep-link в бота. Семья режима → суффикс параметра start=.
 const BOT_USERNAME = 'taxes_navigator_bot';
@@ -76,8 +80,6 @@ async function verifyProWithBackend() {
     }
   } catch (_) { /* бэкенд недоступен — остаёмся на предварительном статусе */ }
 }
-
-const PRO_CODE_KEY = 'tn_pro_code'; // сюда сохраняем активированный код доступа
 
 function detectProFromLaunch() {
   try {
