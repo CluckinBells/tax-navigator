@@ -59,32 +59,17 @@ const BOT_USERNAME = 'taxes_navigator_bot';
 const REM_FAMILY_BY_REGIME = { usn6: 'usn', usn15: 'usn', psn: 'psn', ausn8: 'ausn', ausn20: 'ausn' };
 const FAMILY_LABEL = { usn: 'УСН', psn: 'Патент', ausn: 'АУСН' };
 
-// [ВРЕМЕННАЯ ОТЛАДКА] Видимая на экране строка статуса проверки Pro. Уберём после диагностики.
-function proDbg(m) {
-  let el = document.getElementById('proDbg');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'proDbg';
-    el.style.cssText = 'font-size:11px;text-align:center;padding:7px 10px;color:#e2e8f0;background:rgba(99,102,241,.22);border-radius:8px;margin:8px 12px;word-break:break-word';
-    if (document.body) document.body.insertBefore(el, document.body.firstChild);
-  }
-  if (el) el.textContent = 'Pro-проверка: ' + m;
-}
-
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
 async function verifyProWithBackend() {
-  if (!tg?.initData) { proDbg('нет initData (открыто не из Telegram?)'); return; }
-  if (!BACKEND_READY) { proDbg('бэкенд не настроен'); return; }
+  if (!tg?.initData || !BACKEND_READY) return; // на Этапе 1 (без сервера) не дёргаем сеть
   try {
-    proDbg('запрашиваю /me…');
     const res = await fetch(`${BACKEND_URL}/me`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: tg.initData }),
     });
-    if (!res.ok) { proDbg('/me вернул HTTP ' + res.status); return; }
+    if (!res.ok) return;
     const data = await res.json();
-    proDbg('/me → isPro=' + data.isPro + ', userId=' + data.userId);
     // Сервер — источник правды по оплате. Но Pro по коду доступа (tn_pro_code)
     // не отзываем: он не связан с оплатой ЮKassa.
     const hasValidCode = (() => { try { const c = localStorage.getItem('tn_pro_code'); return c && validateCode(c).valid; } catch (_) { return false; } })();
@@ -93,7 +78,7 @@ async function verifyProWithBackend() {
       // Сервер говорит «не Pro» (например, после возврата) — забираем доступ.
       isPro = false; applyProLock(); recalc();
     }
-  } catch (e) { proDbg('/me ошибка сети: ' + (e?.message || e)); }
+  } catch (_) { /* бэкенд недоступен — остаёмся на предварительном статусе */ }
 }
 
 function detectProFromLaunch() {
