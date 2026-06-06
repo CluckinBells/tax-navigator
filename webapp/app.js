@@ -3,7 +3,6 @@
 
 import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js';
 import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js';
-import { validateCode } from '../shared/codes.js';
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { computeSetAside } from '../shared/setaside.js';
 import { formatDateRu } from '../shared/reminders.js';
@@ -34,12 +33,10 @@ const BACKEND_URL = 'https://nalogovik-cluckin.waw0.amvera.tech';
 // Адрес страницы политики конфиденциальности (тот же домен, где выложена статика).
 const PRIVACY_URL = 'https://navnalog.ru/privacy.html';
 
-// ВАЖНО: эти константы объявлены ДО блока инициализации ниже. Иначе detectProFromLaunch()
-// и verifyProWithBackend(), вызываемые при запуске, читают их в «мёртвой зоне» (TDZ) и падают —
-// из-за этого Pro не подхватывался с сервера при запуске (приходилось жать «оплатить», чтобы
-// /create-invoice вернул alreadyPro и Pro появлялся). Это и был баг с пропадающим Pro.
+// ВАЖНО: BACKEND_READY объявлен ДО блока инициализации ниже. Иначе verifyProWithBackend(),
+// вызываемый при запуске, читает его в «мёртвой зоне» (TDZ) и падает — из-за этого Pro
+// не подхватывался с сервера при запуске. Это был баг с пропадающим Pro.
 const BACKEND_READY = !BACKEND_URL.includes('example.com'); // бэкенд настроен (адрес не заглушка)
-const PRO_CODE_KEY = 'tn_pro_code'; // ключ сохранённого кода доступа в localStorage
 
 // --- Инициализация Telegram ---
 let isPro = false;
@@ -48,9 +45,8 @@ if (tg) {
   tg.expand();
   // setHeaderColor поддерживается с Bot API 6.1 — на старых клиентах не вызываем (иначе варнинг).
   if (tg.isVersionAtLeast?.('6.1')) tg.setHeaderColor('secondary_bg_color');
-  // Быстрый предварительный Pro-статус из ссылки запуска (мгновенно, до ответа сервера).
-  isPro = detectProFromLaunch();
-  // Достоверный Pro-статус — с бэкенда по подписи initData (см. bot/server.js).
+  // Pro-статус определяет ТОЛЬКО сервер по подписи initData (см. bot/server.js).
+  // Клиентских кодов больше нет — никакого предварительного клиентского Pro.
   verifyProWithBackend();
 }
 
@@ -70,26 +66,13 @@ async function verifyProWithBackend() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    // Сервер — источник правды по оплате. Но Pro по коду доступа (tn_pro_code)
-    // не отзываем: он не связан с оплатой ЮKassa.
-    const hasValidCode = (() => { try { const c = localStorage.getItem('tn_pro_code'); return c && validateCode(c).valid; } catch (_) { return false; } })();
+    // Сервер — единственный источник правды по Pro (оплата ЮKassa).
     if (data.isPro && !isPro) { isPro = true; applyProLock(); recalc(); }
-    else if (!data.isPro && isPro && !hasValidCode) {
+    else if (!data.isPro && isPro) {
       // Сервер говорит «не Pro» (например, после возврата) — забираем доступ.
       isPro = false; applyProLock(); recalc();
     }
   } catch (_) { /* бэкенд недоступен — остаёмся на предварительном статусе */ }
-}
-
-function detectProFromLaunch() {
-  try {
-    // Предварительный Pro даём ТОЛЬКО по ранее активированному коду доступа на этом
-    // устройстве. Параметры ?pro=1 / start_param с 'pro' УБРАНЫ — это был бесплатный
-    // обход оплаты (Pro-контент считается на клиенте). Источник правды по оплате — /me.
-    const saved = localStorage.getItem(PRO_CODE_KEY);
-    if (saved && validateCode(saved).valid) return true;
-  } catch (_) {}
-  return false;
 }
 
 // --- Поля формы ---
@@ -779,39 +762,6 @@ function unlockPro() {
   closePaywall();
   applyProLock();
   recalc();
-}
-
-// --- Активация по коду доступа ---
-$('haveCodeBtn')?.addEventListener('click', () => {
-  const box = $('codeBox');
-  box.hidden = !box.hidden;
-  if (!box.hidden) $('codeInput')?.focus();
-});
-
-$('redeemBtn')?.addEventListener('click', redeemCode);
-$('codeInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') redeemCode(); });
-
-function redeemCode() {
-  const input = $('codeInput');
-  const msg = $('codeMsg');
-  const raw = input.value.trim();
-  if (!raw) { showCodeMsg(msg, 'Введите код доступа.', false); return; }
-  const res = validateCode(raw);
-  if (!res.valid) {
-    showCodeMsg(msg, 'Код неверный. Проверьте и попробуйте ещё раз.', false);
-    tg?.HapticFeedback?.notificationOccurred?.('error');
-    return;
-  }
-  // Сохраняем код на устройстве — Pro останется активным после перезапуска.
-  try { localStorage.setItem(PRO_CODE_KEY, raw.toUpperCase()); } catch (_) {}
-  showCodeMsg(msg, 'Код принят! Pro активирован 🎉', true);
-  tg?.HapticFeedback?.notificationOccurred?.('success');
-  setTimeout(() => { unlockPro(); }, 700);
-}
-
-function showCodeMsg(el, text, ok) {
-  el.textContent = text;
-  el.className = 'code-msg ' + (ok ? 'code-msg--ok' : 'code-msg--err');
 }
 
 // Ссылка на политику конфиденциальности — открываем во внешнем браузере Telegram.
