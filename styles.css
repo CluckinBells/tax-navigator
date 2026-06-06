@@ -116,6 +116,10 @@ img, svg { display: block; }
 .hero__trust { list-style: none; display: flex; gap: 28px; flex-wrap: wrap; }
 .hero__trust li { font-size: 14px; color: var(--ink-soft); }
 .hero__trust b { display: block; font-size: 24px; color: var(--ink); font-weight: 800; }
+.hero__handle { margin: 0 0 24px; font-size: 14.5px; color: var(--ink-soft); }
+.tg-handle { color: var(--brand-ink); font-weight: 700; }
+.tg-handle:hover { text-decoration: underline; }
+.footer__handle { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
 
 /* Превью карточки */
 .hero__preview { display: grid; place-items: center; }
