@@ -270,6 +270,9 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
 .feature p { color: var(--ink-soft); font-size: 14.5px; }
 .feature--pro { border-color: rgba(168,85,247,.4); }
 .feature__tag { position: absolute; top: 18px; right: 18px; font-size: 11px; font-weight: 800; letter-spacing: .05em; color: #fff; background: linear-gradient(120deg, var(--brand), var(--brand-2)); padding: 3px 9px; border-radius: 999px; }
+/* Бенто-вариативность: флагман и финальная карточка шире — ломает «7 одинаковых карточек» */
+.features__grid > .feature:first-child,
+.features__grid > .feature:last-child { grid-column: span 2; }
 
 /* ===== Тарифы ===== */
 .pricing { background: var(--bg-soft); }
@@ -319,6 +322,8 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
   .hero__preview { order: -1; }
   .calc__layout { grid-template-columns: 1fr; }
   .features__grid { grid-template-columns: repeat(2, 1fr); }
+  .features__grid > .feature:first-child,
+  .features__grid > .feature:last-child { grid-column: auto; }
   .problem__grid { grid-template-columns: 1fr; }
   .problem__arrow { transform: rotate(90deg); }
   .nav__links { display: none; }
