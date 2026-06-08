@@ -35,6 +35,7 @@ const els = {
   overpayNum: $('overpayNum'),
   resultBest: $('resultBest'),
   prolockSavings: $('prolockSavings'),
+  prolockOverpay: $('prolockOverpay'),
   bestPill: $('bestPill'),
   bestCard: $('bestCard'),
   compareList: $('compareList'),
@@ -131,9 +132,11 @@ function recalc() {
       els.resultHook.style.display = '';
       els.overpayNum.textContent = formatMoney(res.savings);
       els.prolockSavings.textContent = formatMoney(res.savings);
+      if (els.prolockOverpay) els.prolockOverpay.textContent = formatMoney(res.savings);
     } else {
       els.resultHook.style.display = 'none';
       els.prolockSavings.textContent = 'эту сумму';
+      if (els.prolockOverpay) els.prolockOverpay.textContent = 'вашей переплаты';
     }
     // Спокойно, ниже хука: выгодный режим и его нагрузка.
     const rate = res.effectiveRate != null ? ` · ${formatPercent(res.effectiveRate)} от выручки` : '';
