@@ -31,10 +31,10 @@ const els = {
   patentAvailable: $('patentAvailable'),
   patentCost: $('patentCost'),
   patentCostField: $('patentCostField'),
-  bestName: $('bestName'),
-  bestTotal: $('bestTotal'),
-  bestSave: $('bestSave'),
-  bestRate: $('bestRate'),
+  resultHook: $('resultHook'),
+  overpayNum: $('overpayNum'),
+  resultBest: $('resultBest'),
+  prolockSavings: $('prolockSavings'),
   bestPill: $('bestPill'),
   bestCard: $('bestCard'),
   compareList: $('compareList'),
@@ -125,23 +125,23 @@ function recalc() {
 
   // Карточка лучшего режима
   if (res.best) {
-    els.bestName.textContent = res.best.name;
-    els.bestTotal.innerHTML = `${formatMoney(res.best.total)} <span>налогов в год</span>`;
-    els.bestRate.textContent = `Эффективная ставка к выручке — ${formatPercent(res.effectiveRate)}`;
     els.bestPill.style.display = '';
+    // Хук: личная переплата (loss-framing) — главный мотиватор. res.savings = разрыв лучший↔худший.
     if (res.savings > 0) {
-      els.bestSave.style.display = '';
-      els.bestSave.innerHTML =
-        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
-        `Экономия ${formatMoney(res.savings)} против худшего варианта`;
+      els.resultHook.style.display = '';
+      els.overpayNum.textContent = formatMoney(res.savings);
+      els.prolockSavings.textContent = formatMoney(res.savings);
     } else {
-      els.bestSave.style.display = 'none';
+      els.resultHook.style.display = 'none';
+      els.prolockSavings.textContent = 'эту сумму';
     }
+    // Спокойно, ниже хука: выгодный режим и его нагрузка.
+    const rate = res.effectiveRate != null ? ` · ${formatPercent(res.effectiveRate)} от выручки` : '';
+    els.resultBest.innerHTML = `Выгоднее всего — <b>${res.best.name}</b>: ${formatMoney(res.best.total)} налогов в год${rate}`;
   } else {
-    els.bestName.textContent = 'Нет доступных режимов';
-    els.bestTotal.innerHTML = '<span>проверьте параметры</span>';
-    els.bestRate.textContent = '';
-    els.bestSave.style.display = 'none';
+    els.resultHook.style.display = 'none';
+    els.resultBest.textContent = 'Нет доступных режимов — проверьте параметры.';
+    els.prolockSavings.textContent = 'эту сумму';
     els.bestPill.style.display = 'none';
   }
 

@@ -200,7 +200,6 @@
   <section class="section calc" id="calc">
     <div class="container">
       <div class="section__head">
-        <span class="eyebrow">Бесплатный расчёт</span>
         <h2>Посчитайте свой налог прямо сейчас</h2>
         <p>Заполните поля — результат появится мгновенно. Без регистрации.</p>
         <div class="calc__privacy">
@@ -254,13 +253,14 @@
         <div class="calc__result">
           <div class="rcard rcard--main" id="bestCard">
             <div class="rcard__head">
-              <span class="rcard__label">Лучший режим для вас</span>
+              <span class="rcard__label">Ваш результат</span>
               <span class="pill pill--win" id="bestPill">выгодно</span>
             </div>
-            <div class="rcard__big" id="bestName">—</div>
-            <div class="rcard__sum"><span id="bestTotal">—</span></div>
-            <div class="rcard__save" id="bestSave"></div>
-            <div class="rcard__rate" id="bestRate"></div>
+            <div class="result-hook" id="resultHook">
+              <span class="result-hook__cap">На невыгодном режиме вы переплачиваете до</span>
+              <span class="result-hook__num" id="overpayNum">—</span><span class="result-hook__unit">в год</span>
+            </div>
+            <p class="result-best" id="resultBest">—</p>
           </div>
 
           <div class="panel compare">
@@ -274,16 +274,16 @@
           <!-- Pro-замок -->
           <div class="panel prolock" id="prolock">
             <div class="prolock__blur" aria-hidden="true">
-              <div class="prolock__row"><span>Детальная разбивка налога и взносов</span><b>•••</b></div>
-              <div class="prolock__row"><span>Сценарии роста на 2 года вперёд</span><b>•••</b></div>
-              <div class="prolock__row"><span>Точки перелома: когда менять режим</span><b>•••</b></div>
-              <div class="prolock__row"><span>PDF-отчёт для бухгалтера</span><b>•••</b></div>
+              <div class="prolock__row"><span>Детальная разбивка: налог, взносы, НДС</span><b>•••</b></div>
+              <div class="prolock__row"><span>Когда сменить режим при росте</span><b>•••</b></div>
+              <div class="prolock__row"><span>Сколько откладывать на налоги</span><b>•••</b></div>
+              <div class="prolock__row"><span>PDF-отчёт + черновик декларации</span><b>•••</b></div>
             </div>
             <div class="prolock__overlay">
               <div class="prolock__lock">🔒</div>
-              <h4>Откройте полный разбор в Pro</h4>
-              <p>Детализация, сценарии роста, точки перелома и PDF-отчёт.</p>
-              <a href="https://t.me/taxes_navigator_bot?start=site" target="_blank" rel="noopener" class="btn btn--primary">Открыть полный разбор в Telegram →</a>
+              <h4>Полный план под вашу экономию</h4>
+              <p>Как перейти на выгодный режим, когда менять его при росте и сколько откладывать — чтобы <b id="prolockSavings">эту сумму</b> оставить себе.</p>
+              <a href="https://t.me/taxes_navigator_bot?start=site" target="_blank" rel="noopener" class="btn btn--primary btn--lg">Открыть полный план в Telegram →</a>
             </div>
           </div>
         </div>
@@ -299,7 +299,6 @@
   <section class="section features" id="features">
     <div class="container">
       <div class="section__head">
-        <span class="eyebrow">Возможности</span>
         <h2>Не просто калькулятор, а навигатор по налогам</h2>
       </div>
       <div class="features__grid">
@@ -350,7 +349,6 @@
   <section class="section pricing" id="pricing">
     <div class="container">
       <div class="section__head">
-        <span class="eyebrow">Тарифы</span>
         <h2>Начните бесплатно, откройте Pro навсегда</h2>
         <p>Один раз оплатили — пользуетесь без ограничений. Никаких подписок и автосписаний.</p>
       </div>
@@ -396,7 +394,6 @@
   <section class="section faq" id="faq">
     <div class="container container--narrow">
       <div class="section__head">
-        <span class="eyebrow">Вопросы и ответы</span>
         <h2>Коротко о главном</h2>
       </div>
       <div class="faq__list" id="faqList">
