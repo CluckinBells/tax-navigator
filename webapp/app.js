@@ -57,6 +57,55 @@ const FAMILY_LABEL = { usn: 'УСН', psn: 'Патент', ausn: 'АУСН' };
 // Виральный шеринг: ссылка ведёт сразу в бота с меткой источника (её считает /srcstats).
 const SHARE_LINK = `https://t.me/${BOT_USERNAME}?start=share`;
 
+// --- Веб-режим: оплата Pro на сайте (без Telegram) ---
+// В обычном браузере (не в Telegram) tg.initData пуст → веб-оплата ЮKassa + токен в localStorage.
+const WEB_TOKEN_KEY = 'tn_web_token';
+const isTelegram = () => !!(tg && tg.initData);
+let webToken = '';
+
+// Проверка веб-Pro: токен из ?paid=... или localStorage → спрашиваем сервер /web/pro.
+async function verifyWebPro() {
+  if (!BACKEND_READY) return;
+  const params = new URLSearchParams(location.search);
+  const token = (params.get('paid') || localStorage.getItem(WEB_TOKEN_KEY) || '').trim();
+  if (params.has('paid')) history.replaceState(null, '', location.pathname + location.hash); // прячем токен из адреса
+  if (!token) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/web/pro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+    const data = await res.json().catch(() => ({}));
+    if (data.isPro) {
+      try { localStorage.setItem(WEB_TOKEN_KEY, token); } catch (_) {}
+      webToken = token;
+      if (!isPro) { isPro = true; applyProLock(); recalc(); }
+      showWebClaim(token);
+    }
+  } catch (_) {}
+}
+
+// Запуск веб-оплаты: email для чека → сервер создаёт платёж ЮKassa → редирект на оплату.
+async function startWebPayment() {
+  const box = $('webPayBox'); if (box) box.hidden = false;
+  const note = $('payNote');
+  const say = (m) => { if (note) { note.textContent = m; note.style.display = 'block'; } };
+  const email = ($('webEmail')?.value || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Укажите email — на него придёт чек об оплате.'); $('webEmail')?.focus(); return; }
+  say('Создаём оплату…');
+  try {
+    const res = await fetch(`${BACKEND_URL}/web/create-payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.confirmationUrl) { say('Не удалось создать оплату: ' + (data.error || res.status) + '. Попробуйте позже.'); return; }
+    window.location.href = data.confirmationUrl; // страница оплаты ЮKassa (тот же браузер, без Telegram)
+  } catch (e) { say('Ошибка связи с сервером оплаты: ' + (e?.message || '') + '.'); }
+}
+
+// Баннер «Pro активен» + ссылка перенести доступ в Telegram (claim).
+function showWebClaim(token) {
+  const el = $('webClaim'); if (!el) return;
+  const link = $('webClaimLink');
+  if (link) link.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(token)}`;
+  el.hidden = false;
+}
+
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
 async function verifyProWithBackend() {
   if (!tg?.initData || !BACKEND_READY) return; // на Этапе 1 (без сервера) не дёргаем сеть
@@ -721,6 +770,7 @@ $('buyProBtn').addEventListener('click', async () => {
     unlockPro();
     return;
   }
+  if (!isTelegram()) { return startWebPayment(); } // браузер вне Telegram → веб-оплата ЮKassa
   if (!BACKEND_READY) {
     alertMsg('Оплата Pro скоро откроется. Следите за обновлениями бота!');
     return;
@@ -810,3 +860,5 @@ $('privacyLink')?.addEventListener('click', (e) => {
 restoreInputs();
 applyProLock();
 recalc();
+verifyWebPro();
+if (!isTelegram()) { const b = $('webPayBox'); if (b) b.hidden = false; } // в браузере показываем поле email для веб-оплаты

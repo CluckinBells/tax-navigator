@@ -229,6 +229,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 /* Зачёркнутая старая цена (промо «990 вместо 1990») */
 .price-old { opacity: .6; text-decoration: line-through; font-weight: 600; }
 
+/* Веб-оплата (открыто в браузере, без Telegram) */
+.web-pay { margin-bottom: 10px; }
+.web-pay input { width: 100%; font-family: inherit; font-size: 16px; color: var(--text); padding: 12px 13px; border: 1.5px solid var(--bg-secondary); border-radius: 11px; background: var(--bg-secondary); box-sizing: border-box; }
+.web-pay input:focus { outline: none; border-color: var(--button); background: var(--bg); }
+.web-claim { margin: 0 0 14px; padding: 11px 14px; border-radius: 12px; background: var(--win-bg); color: var(--text); font-size: 13.5px; line-height: 1.5; }
+.web-claim a { color: var(--button); font-weight: 700; white-space: nowrap; }
+
 /* Налоговая подушка (сколько отложить на налоги) */
 .sa-hint { font-size: 13px; color: var(--hint); line-height: 1.5; margin-bottom: 14px; }
 .sa-grid { display: grid; gap: 10px; }
