@@ -5,6 +5,7 @@ import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline } fr
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { computeSetAside } from '../shared/setaside.js';
+import { normalizeSource, recordStart, formatSourceStats } from '../shared/sources.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -173,6 +174,31 @@ check('АУСН: помечен как авто-списание', saAusn.auto, 
 const saNpd = computeSetAside({ regimeId: 'npd', incomeToDate: 2000000, individualsShare: 0.3 });
 check('НПД: доступен на 2 млн', saNpd.available, true);
 check('НПД: подсказка про «Мой налог»', saNpd.note.includes('Мой налог'), true);
+
+// --- Эталон 10: учёт источников переходов (start-метки) ---
+console.log('\nЭталон 10 — источники переходов:');
+check('пустая метка → direct', normalizeSource(''), 'direct');
+check('метка чистится и в нижний регистр', normalizeSource('TG_Seller'), 'tg_seller');
+check('лишние символы отбрасываются', normalizeSource('a/b c!'), 'abc');
+check('совсем мусор → other', normalizeSource('!!!'), 'other');
+let stx = { sources: {}, seen: {} };
+stx = recordStart(stx, 'tg_seller', 111, '2026-06-09');
+check('1 старт → starts 1', stx.sources.tg_seller.starts, 1);
+check('1 старт → уник 1', stx.sources.tg_seller.users, 1);
+stx = recordStart(stx, 'tg_seller', 111, '2026-06-09');
+check('повтор того же юзера → starts 2', stx.sources.tg_seller.starts, 2);
+check('повтор того же юзера → уник всё ещё 1', stx.sources.tg_seller.users, 1);
+stx = recordStart(stx, 'tg_seller', 222, '2026-06-10');
+check('новый юзер → уник 2', stx.sources.tg_seller.users, 2);
+check('last обновился', stx.sources.tg_seller.last, '2026-06-10');
+check('first сохранился', stx.sources.tg_seller.first, '2026-06-09');
+stx = recordStart(stx, 'site', 111, '2026-06-11');
+check('first-touch: у site 0 уник (юзер уже виден)', stx.sources.site.users, 0);
+check('у site 1 старт', stx.sources.site.starts, 1);
+const beforeRec = { sources: {}, seen: {} };
+recordStart(beforeRec, 'x', 9, '2026-06-09');
+check('recordStart не мутирует вход', Object.keys(beforeRec.sources).length, 0);
+check('сводка содержит итог', formatSourceStats(stx).includes('start'), true);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);

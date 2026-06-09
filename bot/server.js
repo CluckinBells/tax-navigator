@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import crypto from 'node:crypto';
 import { nextDeadline } from '../shared/engine.js';
 import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
+import { recordStart, formatSourceStats } from '../shared/sources.js';
 
 // .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
 // попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
@@ -126,6 +127,19 @@ function subscribeReminders(userId, chatId, regime) {
   saveReminders();
 }
 function unsubscribeReminders(userId) { delete reminders[String(userId)]; saveReminders(); }
+
+// --- Хранилище источников переходов (start-метки) ---
+// sources.json: { sources: { <метка>: { starts, users, first, last } }, seen: { <userId>: <первая метка> } }
+// Считаем, откуда люди приходят в бота (?start=tg_seller / site / nds / ...). Логика — в shared/sources.js.
+const SRC_PATH = process.env.DATA_DIR
+  ? new URL('sources.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
+  : new URL('./sources.json', import.meta.url);
+let sourceStats = { sources: {}, seen: {} };
+try {
+  const s = JSON.parse(readFileSync(SRC_PATH, 'utf8'));
+  if (s && s.sources && s.seen) sourceStats = s;
+} catch (_) {}
+function saveSources() { try { writeFileSync(SRC_PATH, JSON.stringify(sourceStats)); } catch (_) {} }
 
 // Семья режима (для кнопок выбора) → представитель id; и человекочитаемые названия.
 const REM_FAMILY = { usn: 'usn6', psn: 'psn', ausn: 'ausn8' };
@@ -281,7 +295,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-07-gh4' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh5' });
 });
 
 // --- Главное меню бота ---
@@ -511,6 +525,12 @@ async function handleUpdate(update) {
     // Часть после «/start » — deep-link параметр из приложения (t.me/бот?start=...).
     const payload = (update.message.text.split(/\s+/)[1] || '').trim();
 
+    // Учёт источника перехода — только для /start (не /menu) и при известном userId.
+    if (update.message.text.startsWith('/start') && fromId) {
+      sourceStats = recordStart(sourceStats, payload, fromId, isoToday());
+      saveSources();
+    }
+
     // Deep-link «reminders» — выбор режима (или апселл, если нет Pro).
     if (payload === 'reminders') {
       const s = isPro(fromId) ? remindersPicker() : remindersUpsell;
@@ -550,6 +570,7 @@ async function handleUpdate(update) {
         '/check ID — проверить статус\n' +
         '/list — сколько всего с Pro\n' +
         '/remstats — сколько подписок на напоминания\n' +
+        '/srcstats — откуда приходят в бота (метки start)\n' +
         '/testreminder — прислать пример напоминания\n\n' +
         'ID пользователя можно узнать: попросите его написать боту @userinfobot.' });
       return;
@@ -577,6 +598,10 @@ async function handleUpdate(update) {
       const byRegime = subs.reduce((m, s) => ((m[REGIME_LABELS[s.regime] || s.regime] = (m[REGIME_LABELS[s.regime] || s.regime] || 0) + 1), m), {});
       const lines = Object.entries(byRegime).map(([k, v]) => `  ${k}: ${v}`).join('\n');
       await tg('sendMessage', { chat_id: chatId, text: `Подписок на напоминания: ${subs.length}` + (lines ? `\n${lines}` : '') });
+      return;
+    }
+    if (cmd === '/srcstats') {
+      await tg('sendMessage', { chat_id: chatId, text: formatSourceStats(sourceStats) });
       return;
     }
     if (cmd === '/testreminder') {
@@ -699,6 +724,7 @@ server.listen(PORT, () => {
   console.log(`   Версия кода: МЕНЮ-2 + напоминания о сроках`);
   console.log(`   Mini App: ${WEBAPP_URL}`);
   console.log(`   Подписок на напоминания: ${Object.keys(reminders).length}`);
+  console.log(`   Источников переходов: ${Object.keys(sourceStats.sources).length}`);
   console.log(`   Цена Pro: ${PRO_PRICE_RUB} ₽ через ЮKassa (разовая покупка, навсегда)`);
   console.log(`   Платёжный токен ЮKassa: ${PROVIDER_TOKEN ? 'задан ✓' : 'НЕ задан ✗'}`);
   // Применяем secret_token к УЖЕ установленному вебхуку (URL узнаём через getWebhookInfo;
