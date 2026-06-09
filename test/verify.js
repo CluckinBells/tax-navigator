@@ -1,7 +1,7 @@
 // Проверка движка на эталонных значениях из исходного Excel.
 // Если все тесты зелёные — логика перенесена верно.
 
-import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline } from '../shared/engine.js';
+import { calculateAll, insuranceContributions, getTaxCalendar, nextDeadline, usnVat } from '../shared/engine.js';
 import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { computeSetAside } from '../shared/setaside.js';
@@ -31,12 +31,12 @@ const r1 = calculateAll({
 const by1 = Object.fromEntries(r1.regimes.map((r) => [r.id, r]));
 check('НПД недоступен', by1.npd.available, false);
 check('УСН6 итого', by1.usn6.total, 300000);
-check('УСН15 итого', by1.usn15.total, 554390);
-check('ПСН итого', by1.psn.total, 104390);
+check('УСН15 итого (взносы в базе)', by1.usn15.total, 538732);
+check('ПСН итого (взносы от потенц. дохода)', by1.psn.total, 59390);
 check('АУСН8 итого', by1.ausn8.total, 400000);
 check('АУСН20 итого', by1.ausn20.total, 600000);
 check('лучший режим — ПСН', r1.best.id, 'psn');
-check('экономия vs худший', r1.savings, 495610);
+check('экономия vs худший', r1.savings, 540610);
 
 // --- Эталон 2: лист «Сценарии», сценарий 2 ---
 // Выручка 15 млн, расходы 6 млн, физлица 20%, 2 работника, АУСН Да, ПСН Да, патент 80 000
@@ -47,7 +47,7 @@ const r2 = calculateAll({
 });
 const by2 = Object.fromEntries(r2.regimes.map((r) => [r.id, r]));
 check('УСН6 итого', by2.usn6.total, 900000);
-check('ПСН итого', by2.psn.total, 244390);
+check('ПСН итого (взносы от потенц. дохода)', by2.psn.total, 107723);
 check('АУСН8 итого', by2.ausn8.total, 1200000);
 check('лучший режим — ПСН', r2.best.id, 'psn');
 
@@ -169,7 +169,7 @@ check('УСН6: взносы 104390', sa6.contributions, 104390);
 const sa6paid = computeSetAside({ regimeId: 'usn6', incomeToDate: 5000000, paid: 100000 });
 check('УСН6: уплачено 100к → отложить 200000', sa6paid.setAside, 200000);
 const saPsn = computeSetAside({ regimeId: 'psn', incomeToDate: 5000000, patentAvailable: true, patentCost: 30000 });
-check('ПСН: отложить 104390', saPsn.setAside, 104390);
+check('ПСН: отложить 59390 (взносы от потенц. дохода)', saPsn.setAside, 59390);
 const saAusn = computeSetAside({ regimeId: 'ausn8', incomeToDate: 5000000, ausnRegion: true });
 check('АУСН: помечен как авто-списание', saAusn.auto, true);
 const saNpd = computeSetAside({ regimeId: 'npd', incomeToDate: 2000000, individualsShare: 0.3 });
@@ -220,6 +220,13 @@ check('claimedBy = строка userId', wp.tok1.claimedBy, '702308050');
 const wpOrig = {};
 createPending(wpOrig, 'z');
 check('createPending не мутирует вход', Object.keys(wpOrig).length, 0);
+
+// --- Эталон 12: корректность после аудита движка (взносы в базе УСН Д-Р, граница НДС, патент-взносы) ---
+console.log('\nЭталон 12 — корректность после аудита:');
+check('НДС при доходе ровно 20 млн — освобождение (0)', usnVat(20000000), 0);
+check('НДС при 20 млн + 1 ₽ — уже облагается (>0)', usnVat(20000001) > 0, true);
+check('УСН Д-Р: взносы уменьшают базу (итог 538732)', by1.usn15.total, 538732);
+check('ПСН: взнос от потенциального дохода (патент 30к → взносы 59390)', by1.psn.contributions, 59390);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);

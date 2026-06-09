@@ -21,7 +21,7 @@ export function insuranceContributions(revenue, p = PARAMS_2026) {
  * Это упрощение: общий путь «22% с вычетами входящего НДС» здесь не считается.
  */
 export function usnVat(revenue, p = PARAMS_2026) {
-  if (revenue < p.vatThreshold) return 0;
+  if (revenue <= p.vatThreshold) return 0; // освобождение при доходе ≤ 20 млн (за предыдущий год)
   if (revenue <= p.vatMidThreshold) return revenue * p.vatLowRate;
   return revenue * p.vatHighRate;
 }
@@ -87,15 +87,16 @@ function calcUsnProfit(input, p) {
   const reasons = [];
   if (revenue > p.usnLimit) reasons.push(`Выручка выше лимита УСН — ${mln(p.usnLimit)} в год`);
   const available = reasons.length === 0;
-  const base = Math.max(0, revenue - expenses);
-  const taxRegular = base * p.usnProfitRate;
-  const taxMin = revenue * p.usnMinTaxRate;
-  const tax = available ? Math.max(taxRegular, taxMin) : 0;
   const contributions = available ? insuranceContributions(revenue, p) : 0;
+  // Страховые взносы на УСН «Доходы-Расходы» — расходы, уменьшают налоговую базу (ст. 346.16 НК РФ).
+  const base = Math.max(0, revenue - expenses - contributions);
+  const taxRegular = base * p.usnProfitRate;
+  const taxMin = revenue * p.usnMinTaxRate; // минимальный налог — 1% от выручки
+  const tax = available ? Math.max(taxRegular, taxMin) : 0;
   const vat = available ? usnVat(revenue, p) : 0;
   return regime('usn15', 'УСН «Доходы-Расходы» 15%', available, {
     tax, contributions, vat, reasons,
-    note: 'Выгоден при расходах > 60% выручки. Минимальный налог — 1% от выручки.',
+    note: 'Выгоден при расходах > 60% выручки. Взносы за себя тоже идут в расходы. Минимальный налог — 1% от выручки.',
   });
 }
 
@@ -108,8 +109,10 @@ function calcPSN(input, p) {
   if (revenue > p.psnLimit) reasons.push(`Выручка выше лимита ПСН — ${mln(p.psnLimit)} в год`);
   if (employees > p.psnMaxEmployees) reasons.push(`На ПСН не более ${p.psnMaxEmployees} работников`);
   const available = reasons.length === 0;
-  const contributions = available ? insuranceContributions(revenue, p) : 0;
   const cost = available ? patentCost : 0;
+  // На ПСН доп. взнос 1% считается от ПОТЕНЦИАЛЬНОГО дохода, а не от фактической выручки
+  // (ст. 430 НК РФ). Потенциальный доход = стоимость патента / ставку ПСН (6%).
+  const contributions = available ? insuranceContributions(cost / p.psnRate, p) : 0;
   // Стоимость патента уменьшается на взносы по тем же правилам, что и УСН Доходы.
   const deduction = employees === 0
     ? Math.min(cost, contributions)
