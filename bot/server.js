@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import { nextDeadline } from '../shared/engine.js';
 import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { recordStart, formatSourceStats } from '../shared/sources.js';
+import { createPending, markPaid, isPaid, markClaimed, isClaimed } from '../shared/webpro.js';
 
 // .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
 // попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
@@ -53,6 +54,11 @@ const VAT_CODE = Number(process.env.VAT_CODE || 1);
 // Если не задан — вебхук ЮKassa отклоняется (авто-revoke при возврате выключен; возврат можно
 // оформить вручную через /admin). Защита от подделки refund→revokePro.
 const YOOKASSA_WEBHOOK_SECRET = (process.env.YOOKASSA_WEBHOOK_SECRET || '').trim();
+// --- Веб-оплата ЮKassa через API (оплата картой на САЙТЕ, без Telegram). Ключи из ЛК ЮKassa. ---
+const YOOKASSA_SHOP_ID = (process.env.YOOKASSA_SHOP_ID || '').trim();
+const YOOKASSA_SECRET_KEY = (process.env.YOOKASSA_SECRET_KEY || '').trim();
+// Базовый адрес сайта для return_url после оплаты (и claim-ссылок). Без хвостового слэша.
+const SITE_URL = (process.env.SITE_URL || 'https://navnalog.ru').trim().replace(/\/$/, '');
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 // Секрет верификации вебхука: Telegram возвращает его в заголовке X-Telegram-Bot-Api-Secret-Token.
 // Детерминированно выводим из BOT_TOKEN — отдельная env-переменная не нужна; бот сам ставит его
@@ -145,6 +151,47 @@ try {
   if (s && s.sources && s.seen) sourceStats = s;
 } catch (_) {}
 function saveSources() { try { writeFileSync(SRC_PATH, JSON.stringify(sourceStats)); } catch (_) {} }
+
+// --- Хранилище веб-оплат Pro (покупки с сайта через ЮKassa API) ---
+// web-pro.json: { <token>: { paid, paymentId, amount, createdAt, paidAt, claimedBy } }. Логика — shared/webpro.js.
+const WEBPRO_PATH = process.env.DATA_DIR
+  ? new URL('web-pro.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
+  : new URL('./web-pro.json', import.meta.url);
+let webPro = {};
+try { webPro = JSON.parse(readFileSync(WEBPRO_PATH, 'utf8')); } catch (_) {}
+function saveWebPro() { try { writeFileSync(WEBPRO_PATH, JSON.stringify(webPro)); } catch (_) {} }
+
+// Создание платежа через API ЮKassa (Basic-auth shopId:secretKey). Возвращает {ok,id,confirmationUrl,error}.
+async function yookassaCreatePayment({ amount, email, token }) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const auth = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString('base64');
+    const r = await fetch('https://api.yookassa.ru/v3/payments', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Idempotence-Key': crypto.randomUUID(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: { value: amount, currency: 'RUB' },
+        capture: true,
+        confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=${token}` },
+        description: 'Налоговый навигатор Pro (разовый доступ)',
+        receipt: {
+          customer: { email },
+          items: [{ description: 'Налоговый навигатор Pro', quantity: '1.00', amount: { value: amount, currency: 'RUB' }, vat_code: VAT_CODE, payment_mode: 'full_payment', payment_subject: 'service' }],
+        },
+        metadata: { kind: 'web_pro', token },
+      }),
+      signal: ctrl.signal,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data?.confirmation?.confirmation_url) return { ok: false, error: data?.description || `http ${r.status}` };
+    return { ok: true, id: data.id, confirmationUrl: data.confirmation.confirmation_url };
+  } catch (e) {
+    return { ok: false, error: e?.name === 'AbortError' ? 'timeout' : (e?.message || String(e)) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Семья режима (для кнопок выбора) → представитель id; и человекочитаемые названия.
 const REM_FAMILY = { usn: 'usn6', psn: 'psn', ausn: 'ausn8' };
@@ -249,6 +296,24 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { invoiceLink: resp.result });
   }
 
+  // 2b) Сайт просит создать веб-платёж ЮKassa (оплата картой на сайте, без Telegram).
+  if (req.url === '/web/create-payment' && req.method === 'POST') {
+    if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) return json(res, 503, { error: 'веб-оплата не настроена' });
+    const email = String(body.email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(res, 400, { error: 'нужен корректный email для чека' });
+    const token = crypto.randomBytes(16).toString('hex');
+    const yk = await yookassaCreatePayment({ amount: PRO_PRICE_RUB.toFixed(2), email, token });
+    if (!yk.ok) { console.log('[web-pay] ЮKassa ошибка:', yk.error); return json(res, 502, { error: 'не удалось создать платёж' }); }
+    webPro = createPending(webPro, token, { paymentId: yk.id, amount: PRO_PRICE_RUB * 100, createdAt: isoToday() });
+    saveWebPro();
+    return json(res, 200, { confirmationUrl: yk.confirmationUrl });
+  }
+
+  // 2c) Сайт спрашивает: «эта покупка (token) оплачена?» — источник правды о веб-Pro.
+  if (req.url === '/web/pro' && req.method === 'POST') {
+    return json(res, 200, { isPro: isPaid(webPro, String(body.token || '').trim()) });
+  }
+
   // 3) Вебхук Telegram (обновления бота)
   if (req.url === `/webhook/${BOT_TOKEN}` && req.method === 'POST') {
     // Проверяем, что запрос реально от Telegram (secret_token). Защита от подделки апдейтов.
@@ -293,6 +358,17 @@ const server = http.createServer(async (req, res) => {
           console.log('[yookassa-webhook] возврат, но пользователь не найден по платежу', paymentId);
         }
       }
+      if (event === 'payment.succeeded') {
+        // Веб-оплата на сайте подтверждена. token у нас в metadata — помечаем покупку оплаченной (идемпотентно).
+        const token = obj?.metadata?.token;
+        if (token && webPro[token]) {
+          webPro = markPaid(webPro, token, obj.id, isoToday());
+          saveWebPro();
+          console.log('[web-pay] оплачено: token', token, 'payment', obj.id);
+        } else {
+          console.log('[web-pay] payment.succeeded без известного token:', token);
+        }
+      }
     } catch (e) {
       console.log('[yookassa-webhook] ошибка обработки:', e?.message);
     }
@@ -300,7 +376,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh8' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh9' });
 });
 
 // --- Главное меню бота ---
@@ -552,6 +628,28 @@ async function handleUpdate(update) {
         await tg('sendMessage', { chat_id: chatId, text: s.text, parse_mode: 'HTML', reply_markup: s.keyboard, disable_web_page_preview: true });
         return;
       }
+    }
+
+    // Deep-link «claim_<token>» — перенос веб-оплаты в Telegram: проверяем оплату на сервере → выдаём Pro.
+    if (payload.startsWith('claim_')) {
+      const token = payload.slice('claim_'.length);
+      let text;
+      if (isPro(fromId)) {
+        text = '✅ У вас уже есть Pro в Telegram — доступ навсегда. Откройте калькулятор, все функции активны.';
+      } else if (isPaid(webPro, token) && !isClaimed(webPro, token)) {
+        grantPro(fromId);
+        webPro = markClaimed(webPro, token, fromId); saveWebPro();
+        text = '🎉 Pro активирован в Telegram! Спасибо за покупку. Все Pro-функции открыты — нажмите «Открыть калькулятор».';
+      } else if (isPaid(webPro, token) && isClaimed(webPro, token)) {
+        text = 'Эта покупка уже привязана к аккаунту Telegram. Если это ошибка — напишите нам.';
+      } else {
+        text = 'Не удалось подтвердить покупку по ссылке (возможно, оплата ещё обрабатывается — попробуйте через минуту). Если вы оплатили на сайте — напишите нам, поможем.';
+      }
+      await tg('sendMessage', { chat_id: chatId, text, reply_markup: { inline_keyboard: [
+        [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
+        [{ text: '← В меню', callback_data: 'menu' }],
+      ] } });
+      return;
     }
 
     console.log('[/start] получен от', fromId, '— отправляю меню');

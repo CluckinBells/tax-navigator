@@ -3,6 +3,7 @@ bot/pro-users.json
 bot/payments.json
 bot/reminders.json
 bot/sources.json
+bot/web-pro.json
 
 # Список кодов доступа — НИКОГДА не выкладывать публично!
 КОДЫ-ДОСТУПА.txt

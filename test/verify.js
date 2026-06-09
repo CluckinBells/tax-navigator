@@ -6,6 +6,7 @@ import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { computeSetAside } from '../shared/setaside.js';
 import { normalizeSource, recordStart, formatSourceStats } from '../shared/sources.js';
+import { createPending, markPaid, isPaid, markClaimed, isClaimed } from '../shared/webpro.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -199,6 +200,26 @@ const beforeRec = { sources: {}, seen: {} };
 recordStart(beforeRec, 'x', 9, '2026-06-09');
 check('recordStart не мутирует вход', Object.keys(beforeRec.sources).length, 0);
 check('сводка содержит итог', formatSourceStats(stx).includes('start'), true);
+
+// --- Эталон 11: веб-Pro (оплата на сайте через ЮKassa API) ---
+console.log('\nЭталон 11 — веб-Pro (оплата на сайте):');
+let wp = {};
+wp = createPending(wp, 'tok1', { amount: 99000 });
+check('создан pending → ещё не оплачен', isPaid(wp, 'tok1'), false);
+wp = markPaid(wp, 'tok1', 'pay_1', '2026-06-09');
+check('после оплаты → оплачен', isPaid(wp, 'tok1'), true);
+check('paymentId сохранён', wp.tok1.paymentId, 'pay_1');
+wp = markPaid(wp, 'tok1', 'pay_2', '2026-06-10');
+check('повторный вебхук идемпотентен (paymentId не перезаписан)', wp.tok1.paymentId, 'pay_1');
+check('неизвестный токен → не оплачен', isPaid(wp, 'nope'), false);
+check('markPaid неизвестного токена не создаёт его', isPaid(markPaid({}, 'x', 'p', 'd'), 'x'), false);
+check('по умолчанию не claimed', isClaimed(wp, 'tok1'), false);
+wp = markClaimed(wp, 'tok1', 702308050);
+check('после claim → claimed', isClaimed(wp, 'tok1'), true);
+check('claimedBy = строка userId', wp.tok1.claimedBy, '702308050');
+const wpOrig = {};
+createPending(wpOrig, 'z');
+check('createPending не мутирует вход', Object.keys(wpOrig).length, 0);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);
