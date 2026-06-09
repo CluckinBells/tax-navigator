@@ -480,5 +480,10 @@
   </footer>
 
   <script type="module" src="app.js"></script>
+
+  <!-- Ненавязчивая плашка для тех, кто уже купил Pro (лендинг и Mini App на одном домене → общий localStorage). -->
+  <a id="proReturn" href="webapp/index.html" hidden
+     style="position:fixed;right:14px;bottom:14px;z-index:60;background:#6366f1;color:#fff;font-weight:700;font-size:14px;line-height:1;padding:11px 16px;border-radius:999px;box-shadow:0 10px 26px -8px rgba(99,102,241,.65);text-decoration:none;">💎 Открыть Pro</a>
+  <script>try{if(localStorage.getItem('tn_web_token')){document.getElementById('proReturn').hidden=false;}}catch(e){}</script>
 </body>
 </html>

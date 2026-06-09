@@ -233,10 +233,10 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 .web-pay { margin-bottom: 10px; }
 .web-pay input { width: 100%; font-family: inherit; font-size: 16px; color: var(--text); padding: 12px 13px; border: 1.5px solid var(--bg-secondary); border-radius: 11px; background: var(--bg-secondary); box-sizing: border-box; }
 .web-pay input:focus { outline: none; border-color: var(--button); background: var(--bg); }
-.pay-done { margin: 0 0 16px; padding: 16px 18px; border-radius: 14px; background: var(--win-bg); border: 1px solid rgba(52,211,153,.25); }
-.pay-done__title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 5px; }
-.pay-done__text { font-size: 13px; line-height: 1.5; color: var(--hint); margin-bottom: 12px; }
-.pay-done__btn { width: 100%; box-sizing: border-box; }
+.pay-done { margin: 0 0 16px; padding: 20px 18px; border-radius: 16px; background: var(--win-bg); border: 1px solid rgba(52,211,153,.3); text-align: center; }
+.pay-done__title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 7px; }
+.pay-done__text { font-size: 13px; line-height: 1.55; color: var(--hint); margin: 0 auto 16px; max-width: 320px; }
+.pay-done__btn { width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 13px 18px; }
 
 /* Налоговая подушка (сколько отложить на налоги) */
 .sa-hint { font-size: 13px; color: var(--hint); line-height: 1.5; margin-bottom: 14px; }
