@@ -7,6 +7,9 @@
 import { breakevenSweep } from './engine.js';
 import { formatMoney, formatPercent, formatShort } from './format.js';
 
+// Экранирование на случай, если в reasons[] попадёт пользовательский текст (сейчас строки статичны).
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 export function buildReportHtml(input, res) {
   const avail = res.regimes.filter((r) => r.available);
   const maxTotal = Math.max(...avail.map((r) => r.total), 1);
@@ -17,7 +20,7 @@ export function buildReportHtml(input, res) {
     .map((r) => {
       if (!r.available) {
         const why = (r.reasons && r.reasons[0]) ? r.reasons[0] : 'недоступен';
-        return `<tr class="off"><td>${r.name}</td><td colspan="4">${why}</td></tr>`;
+        return `<tr class="off"><td>${esc(r.name)}</td><td colspan="4">${esc(why)}</td></tr>`;
       }
       const best = res.best && r.id === res.best.id;
       const w = (r.total / maxTotal) * 100;

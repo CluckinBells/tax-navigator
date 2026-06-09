@@ -29,7 +29,7 @@
   <!-- Шрифт грузится не блокируя рендер: страница работает даже без интернета (важно для Telegram) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=28" />
 
   <!-- Yandex.Metrika counter -->
   <script type="text/javascript">
@@ -283,7 +283,7 @@
             </div>
             <div class="prolock__overlay">
               <div class="prolock__lock">🔒</div>
-              <h4>Полный план под вашу экономию</h4>
+              <h4 id="prolockHead">Полный план под вашу экономию</h4>
               <p>Как перейти на выгодный режим, когда менять его при росте и сколько откладывать — чтобы <b id="prolockSavings">эту сумму</b> оставить себе.</p>
               <a href="https://t.me/taxes_navigator_bot?start=site" target="_blank" rel="noopener" class="btn btn--primary btn--lg">Открыть полный план в Telegram →</a>
               <p class="prolock__reassure">Pro — <s class="price-old">1990 ₽</s> 990 ₽ разово (цена запуска), против <b id="prolockOverpay">вашей переплаты</b> в год. Бесплатно открыть бота · оплата только если нужен план.</p>
@@ -387,7 +387,7 @@
             <li>✓ Обновления ставок и лимитов на 2026</li>
           </ul>
           <a href="https://t.me/taxes_navigator_bot?start=site" target="_blank" rel="noopener" class="btn btn--primary btn--block">Оформить Pro в Telegram</a>
-          <a href="webapp/index.html?buy=1" class="btn btn--ghost btn--block" style="margin-top:8px;">💳 Купить картой на сайте</a>
+          <a href="webapp/index.html?buy=1" class="btn btn--ghost btn--block" style="margin-top:8px;">💳 Оплатить картой (без Telegram)</a>
           <div class="plan__note">Разовая оплата, доступ навсегда. Дешевле одной ошибки в выборе режима.</div>
         </div>
       </div>
@@ -479,7 +479,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=28"></script>
 
   <!-- Ненавязчивая плашка для тех, кто уже купил Pro (лендинг и Mini App на одном домене → общий localStorage). -->
   <a id="proReturn" href="webapp/index.html" hidden
