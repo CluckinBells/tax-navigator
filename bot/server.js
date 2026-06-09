@@ -193,6 +193,25 @@ async function yookassaCreatePayment({ amount, email, token }) {
   }
 }
 
+// Запрос статуса платежа у ЮKassa по id (надёжный источник правды, не зависит от вебхука).
+async function yookassaGetPayment(paymentId) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const auth = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString('base64');
+    const r = await fetch(`https://api.yookassa.ru/v3/payments/${encodeURIComponent(paymentId)}`, {
+      headers: { 'Authorization': `Basic ${auth}` }, signal: ctrl.signal,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: `http ${r.status}` };
+    return { ok: true, status: data.status };
+  } catch (e) {
+    return { ok: false, error: e?.name === 'AbortError' ? 'timeout' : (e?.message || String(e)) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Семья режима (для кнопок выбора) → представитель id; и человекочитаемые названия.
 const REM_FAMILY = { usn: 'usn6', psn: 'psn', ausn: 'ausn8' };
 const REGIME_LABELS = { usn6: 'УСН', usn15: 'УСН', psn: 'Патент (ПСН)', ausn8: 'АУСН', ausn20: 'АУСН', npd: 'НПД' };
@@ -311,7 +330,20 @@ const server = http.createServer(async (req, res) => {
 
   // 2c) Сайт спрашивает: «эта покупка (token) оплачена?» — источник правды о веб-Pro.
   if (req.url === '/web/pro' && req.method === 'POST') {
-    return json(res, 200, { isPro: isPaid(webPro, String(body.token || '').trim()) });
+    const token = String(body.token || '').trim();
+    if (isPaid(webPro, token)) return json(res, 200, { isPro: true });
+    // Локально не помечено (вебхук мог не дойти) — спрашиваем статус платежа напрямую у ЮKassa.
+    const rec = webPro[token];
+    if (rec && rec.paymentId && YOOKASSA_SHOP_ID && YOOKASSA_SECRET_KEY) {
+      const p = await yookassaGetPayment(rec.paymentId);
+      if (p.ok && p.status === 'succeeded') {
+        webPro = markPaid(webPro, token, rec.paymentId, isoToday());
+        saveWebPro();
+        console.log('[web-pay] подтверждено через API ЮKassa: token', token, 'payment', rec.paymentId);
+        return json(res, 200, { isPro: true });
+      }
+    }
+    return json(res, 200, { isPro: false });
   }
 
   // 3) Вебхук Telegram (обновления бота)
@@ -376,7 +408,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh9' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh10' });
 });
 
 // --- Главное меню бота ---

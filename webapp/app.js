@@ -63,17 +63,17 @@ const WEB_TOKEN_KEY = 'tn_web_token';
 const isTelegram = () => !!(tg && tg.initData);
 let webToken = '';
 
-// Проверка веб-Pro: токен из ?paid=... или localStorage → спрашиваем сервер /web/pro.
+// Проверка веб-Pro: токен из ?paid=... или localStorage → сервер /web/pro (он сам сверяет с ЮKassa по API).
 async function verifyWebPro() {
   if (!BACKEND_READY) return;
   const params = new URLSearchParams(location.search);
   const fromUrl = (params.get('paid') || '').trim();
-  if (fromUrl) { try { localStorage.setItem(WEB_TOKEN_KEY, fromUrl); } catch (_) {} } // сразу сохраняем токен возврата (вдруг вебхук задержится)
+  if (fromUrl) { try { localStorage.setItem(WEB_TOKEN_KEY, fromUrl); } catch (_) {} } // сразу сохраняем токен возврата
   if (params.has('paid')) history.replaceState(null, '', location.pathname + location.hash); // прячем токен из адреса
   const token = fromUrl || (localStorage.getItem(WEB_TOKEN_KEY) || '').trim();
   if (!token) return;
-  // Вебхук ЮKassa может прийти на пару секунд позже редиректа — если только что вернулись с оплаты, повторяем проверку.
-  const attempts = fromUrl ? 6 : 1;
+  if (fromUrl) showWebStatus('⏳ Подтверждаем оплату, секунду…');
+  const attempts = fromUrl ? 8 : 1;
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${BACKEND_URL}/web/pro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
@@ -85,8 +85,9 @@ async function verifyWebPro() {
         return;
       }
     } catch (_) {}
-    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2500)); // ждём подтверждение оплаты вебхуком
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2500));
   }
+  if (fromUrl) showWebStatus('Оплата обрабатывается. Если деньги списались — обновите страницу через минуту. Не помогло — напишите нам: filimonov.filimonov05@mail.ru');
 }
 
 // Запуск веб-оплаты: email для чека → сервер создаёт платёж ЮKassa → редирект на оплату.
@@ -109,11 +110,21 @@ async function startWebPayment() {
 function showWebClaim(token, fresh) {
   const el = $('webClaim'); if (!el) return;
   const link = $('webClaimLink');
-  if (link) link.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(token)}`;
+  if (link) { link.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(token)}`; link.style.display = ''; }
+  const txt = el.querySelector('.pay-done__text'); if (txt) txt.style.display = '';
   const title = $('webClaimTitle');
   if (title) title.textContent = fresh ? '🎉 Оплата прошла! Pro ваш навсегда' : '✅ Pro активен на этом устройстве';
   el.hidden = false;
   if (fresh) try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+}
+
+// Статус/ошибка в той же карточке (при подтверждении оплаты на возврате с ЮKassa).
+function showWebStatus(msg) {
+  const el = $('webClaim'); if (!el) return;
+  const title = $('webClaimTitle'); if (title) title.textContent = msg;
+  const txt = el.querySelector('.pay-done__text'); if (txt) txt.style.display = 'none';
+  const link = $('webClaimLink'); if (link) link.style.display = 'none';
+  el.hidden = false;
 }
 
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
