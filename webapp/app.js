@@ -772,12 +772,8 @@ $('buyProBtn').addEventListener('click', async () => {
     if (note) { note.textContent = m; note.style.display = 'block'; }
     try { if (tg?.showAlert) tg.showAlert(m); else alert(m); } catch (_) {}
   };
+  if (!isTelegram()) { return startWebPayment(); } // браузер (не Telegram, в т.ч. если Telegram-SDK не загрузился) → веб-оплата ЮKassa
   alertMsg('Создаём счёт…'); // сразу видимый отклик, что нажатие сработало
-  if (!tg) {
-    unlockPro();
-    return;
-  }
-  if (!isTelegram()) { return startWebPayment(); } // браузер вне Telegram → веб-оплата ЮKassa
   if (!BACKEND_READY) {
     alertMsg('Оплата Pro скоро откроется. Следите за обновлениями бота!');
     return;
