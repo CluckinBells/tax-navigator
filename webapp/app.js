@@ -81,7 +81,7 @@ async function verifyWebPro() {
       if (data.isPro) {
         webToken = token;
         if (!isPro) { isPro = true; applyProLock(); recalc(); }
-        showWebClaim(token);
+        showWebClaim(token, !!fromUrl);
         return;
       }
     } catch (_) {}
@@ -105,12 +105,15 @@ async function startWebPayment() {
   } catch (e) { say('Ошибка связи с сервером оплаты: ' + (e?.message || '') + '.'); }
 }
 
-// Баннер «Pro активен» + ссылка перенести доступ в Telegram (claim).
-function showWebClaim(token) {
+// Пост-оплатный экран «Pro активен» + кнопка перенести доступ в Telegram (claim).
+function showWebClaim(token, fresh) {
   const el = $('webClaim'); if (!el) return;
   const link = $('webClaimLink');
   if (link) link.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(token)}`;
+  const title = $('webClaimTitle');
+  if (title) title.textContent = fresh ? '🎉 Оплата прошла! Pro ваш навсегда' : '✅ Pro активен на этом устройстве';
   el.hidden = false;
+  if (fresh) try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
 }
 
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
