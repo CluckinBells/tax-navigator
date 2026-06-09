@@ -167,20 +167,24 @@ async function yookassaCreatePayment({ amount, email, token }) {
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
     const auth = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString('base64');
+    const payload = {
+      amount: { value: amount, currency: 'RUB' },
+      capture: true,
+      confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=${token}` },
+      description: 'Налоговый навигатор Pro (разовый доступ)',
+      metadata: { kind: 'web_pro', token },
+    };
+    // Чек 54-ФЗ формируем, только если передан email; иначе чек настраивается на стороне ЮKassa.
+    if (email) {
+      payload.receipt = {
+        customer: { email },
+        items: [{ description: 'Налоговый навигатор Pro', quantity: '1.00', amount: { value: amount, currency: 'RUB' }, vat_code: VAT_CODE, payment_mode: 'full_payment', payment_subject: 'service' }],
+      };
+    }
     const r = await fetch('https://api.yookassa.ru/v3/payments', {
       method: 'POST',
       headers: { 'Authorization': `Basic ${auth}`, 'Idempotence-Key': crypto.randomUUID(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: { value: amount, currency: 'RUB' },
-        capture: true,
-        confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=${token}` },
-        description: 'Налоговый навигатор Pro (разовый доступ)',
-        receipt: {
-          customer: { email },
-          items: [{ description: 'Налоговый навигатор Pro', quantity: '1.00', amount: { value: amount, currency: 'RUB' }, vat_code: VAT_CODE, payment_mode: 'full_payment', payment_subject: 'service' }],
-        },
-        metadata: { kind: 'web_pro', token },
-      }),
+      body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
     const data = await r.json().catch(() => ({}));
@@ -318,8 +322,7 @@ const server = http.createServer(async (req, res) => {
   // 2b) Сайт просит создать веб-платёж ЮKassa (оплата картой на сайте, без Telegram).
   if (req.url === '/web/create-payment' && req.method === 'POST') {
     if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) return json(res, 503, { error: 'веб-оплата не настроена' });
-    const email = String(body.email || '').trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json(res, 400, { error: 'нужен корректный email для чека' });
+    const email = String(body.email || '').trim(); // опционально (для чека 54-ФЗ); без него чек на стороне ЮKassa
     const token = crypto.randomBytes(16).toString('hex');
     const yk = await yookassaCreatePayment({ amount: PRO_PRICE_RUB.toFixed(2), email, token });
     if (!yk.ok) { console.log('[web-pay] ЮKassa ошибка:', yk.error); return json(res, 502, { error: 'не удалось создать платёж' }); }
@@ -408,7 +411,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh10' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh11' });
 });
 
 // --- Главное меню бота ---

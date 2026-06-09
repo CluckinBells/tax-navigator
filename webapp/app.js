@@ -90,16 +90,13 @@ async function verifyWebPro() {
   if (fromUrl) showWebStatus('Оплата обрабатывается. Если деньги списались — обновите страницу через минуту. Не помогло — напишите нам: filimonov.filimonov05@mail.ru');
 }
 
-// Запуск веб-оплаты: email для чека → сервер создаёт платёж ЮKassa → редирект на оплату.
+// Запуск веб-оплаты: сразу создаём платёж ЮKassa → редирект на страницу оплаты (без поля email).
 async function startWebPayment() {
-  const box = $('webPayBox'); if (box) box.hidden = false;
   const note = $('payNote');
   const say = (m) => { if (note) { note.textContent = m; note.style.display = 'block'; } };
-  const email = ($('webEmail')?.value || '').trim();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('Укажите email — на него придёт чек об оплате.'); $('webEmail')?.focus(); return; }
   say('Создаём оплату…');
   try {
-    const res = await fetch(`${BACKEND_URL}/web/create-payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const res = await fetch(`${BACKEND_URL}/web/create-payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.confirmationUrl) { say('Не удалось создать оплату: ' + (data.error || res.status) + '. Попробуйте позже.'); return; }
     window.location.href = data.confirmationUrl; // страница оплаты ЮKassa (тот же браузер, без Telegram)
@@ -878,6 +875,5 @@ restoreInputs();
 applyProLock();
 recalc();
 verifyWebPro();
-if (!isTelegram()) { const b = $('webPayBox'); if (b) b.hidden = false; } // в браузере показываем поле email для веб-оплаты
-// Вход «Купить картой» с лендинга (?buy=1) → сразу открываем окно оплаты с полем email.
-if (new URLSearchParams(location.search).get('buy') === '1') { openPaywall(); setTimeout(() => $('webEmail')?.focus(), 120); }
+// Вход «Купить картой» с лендинга (?buy=1) → сразу открываем окно покупки.
+if (new URLSearchParams(location.search).get('buy') === '1') { openPaywall(); }
