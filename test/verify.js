@@ -6,7 +6,6 @@ import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { computeSetAside } from '../shared/setaside.js';
 import { normalizeSource, recordStart, formatSourceStats } from '../shared/sources.js';
-import { promoState } from '../shared/promo.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -200,20 +199,6 @@ const beforeRec = { sources: {}, seen: {} };
 recordStart(beforeRec, 'x', 9, '2026-06-09');
 check('recordStart не мутирует вход', Object.keys(beforeRec.sources).length, 0);
 check('сводка содержит итог', formatSourceStats(stx).includes('start'), true);
-
-// --- Эталон 11: промо «первым N покупателям дешевле» ---
-console.log('\nЭталон 11 — промо «первым N»:');
-const pr = (paidCount) => promoState({ paidCount, limit: 50, promo: 990, full: 1990 });
-check('0 продаж → цена 990', pr(0).price, 990);
-check('0 продаж → осталось 50', pr(0).spotsLeft, 50);
-check('0 продаж → промо активно', pr(0).isPromo, true);
-check('49 продаж → цена 990', pr(49).price, 990);
-check('49 продаж → осталось 1', pr(49).spotsLeft, 1);
-check('50 продаж → цена 1990', pr(50).price, 1990);
-check('50 продаж → промо выключено', pr(50).isPromo, false);
-check('60 продаж → цена 1990', pr(60).price, 1990);
-check('promo==full → промо выключено', promoState({ paidCount: 0, limit: 50, promo: 1990, full: 1990 }).isPromo, false);
-check('лимит 0 → полная цена', promoState({ paidCount: 0, limit: 0, promo: 990, full: 1990 }).price, 1990);
 
 console.log(`\n${failed === 0 ? '✅' : '❌'} Итог: ${passed} прошло, ${failed} провалено`);
 process.exit(failed === 0 ? 0 : 1);

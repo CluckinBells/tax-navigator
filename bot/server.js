@@ -17,7 +17,6 @@ import crypto from 'node:crypto';
 import { nextDeadline } from '../shared/engine.js';
 import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { recordStart, formatSourceStats } from '../shared/sources.js';
-import { promoState } from '../shared/promo.js';
 
 // .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
 // попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
@@ -43,12 +42,10 @@ const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
 const PROVIDER_TOKEN = (process.env.PROVIDER_TOKEN || '').trim();
 // Цена Pro в рублях. Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
 const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 990);
-// «Обычная» (полная) цена после промо. Промо «первым N» действует, пока promo < full.
+// «Обычная» цена-якорь для зачёркивания в тексте (промо «990 вместо 1990»). Только показ.
 const PRO_PRICE_ORIGINAL_RUB = Number(process.env.PRO_PRICE_ORIGINAL_RUB || 1990);
-// Сколько первых покупателей получают цену PRO_PRICE_RUB; дальше — PRO_PRICE_ORIGINAL_RUB.
-const PROMO_LIMIT = Number(process.env.PROMO_LIMIT || 50);
 const PRICE_LABEL = PRO_PRICE_ORIGINAL_RUB > PRO_PRICE_RUB
-  ? `${PRO_PRICE_RUB} ₽ первым ${PROMO_LIMIT} покупателям (дальше ${PRO_PRICE_ORIGINAL_RUB} ₽)`
+  ? `${PRO_PRICE_RUB} ₽ (вместо ${PRO_PRICE_ORIGINAL_RUB} ₽, цена запуска)`
   : `${PRO_PRICE_RUB} ₽`;
 // Ставка НДС для чека 54-ФЗ: 1 = без НДС (для ИП на УСН/НПД). См. ЛК ЮKassa.
 const VAT_CODE = Number(process.env.VAT_CODE || 1);
@@ -114,10 +111,6 @@ function savePayMap() {
 function grantPro(userId) { proUsers.add(String(userId)); saveDb(); }
 function revokePro(userId) { proUsers.delete(String(userId)); saveDb(); }
 function isPro(userId) { return proUsers.has(String(userId)); }
-// Текущая цена Pro с учётом промо «первым N» (источник правды о числе оплативших — этот бот).
-function priceInfo() {
-  return promoState({ paidCount: proUsers.size, limit: PROMO_LIMIT, promo: PRO_PRICE_RUB, full: PRO_PRICE_ORIGINAL_RUB });
-}
 function rememberPayment(paymentId, userId) {
   if (paymentId) { payToUser[String(paymentId)] = String(userId); savePayMap(); }
 }
@@ -233,7 +226,7 @@ const server = http.createServer(async (req, res) => {
       provider_token: PROVIDER_TOKEN,
       currency: 'RUB',
       // сумма в КОПЕЙКАХ (требование Telegram Payments API)
-      prices: [{ label: 'Pro-доступ (навсегда)', amount: priceInfo().price * 100 }],
+      prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_RUB * 100 }],
       // для чека 54-ФЗ ЮKassa требует email/телефон плательщика
       need_email: true,
       send_email_to_provider: true,
@@ -243,7 +236,7 @@ const server = http.createServer(async (req, res) => {
           items: [{
             description: title,
             quantity: '1.00',
-            amount: { value: priceInfo().price.toFixed(2), currency: 'RUB' },
+            amount: { value: PRO_PRICE_RUB.toFixed(2), currency: 'RUB' },
             vat_code: VAT_CODE,
             payment_mode: 'full_payment',
             payment_subject: 'service',
@@ -307,7 +300,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh7' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh8' });
 });
 
 // --- Главное меню бота ---
@@ -354,7 +347,7 @@ async function sendProInvoice(chatId, userId) {
     payload: `pro_${userId}_${Date.now()}`,
     provider_token: PROVIDER_TOKEN,
     currency: 'RUB',
-    prices: [{ label: 'Pro-доступ (навсегда)', amount: priceInfo().price * 100 }],
+    prices: [{ label: 'Pro-доступ (навсегда)', amount: PRO_PRICE_RUB * 100 }],
     need_email: true,
     send_email_to_provider: true,
     provider_data: JSON.stringify({
@@ -362,7 +355,7 @@ async function sendProInvoice(chatId, userId) {
         items: [{
           description: 'Налоговый навигатор Pro',
           quantity: '1.00',
-          amount: { value: priceInfo().price.toFixed(2), currency: 'RUB' },
+          amount: { value: PRO_PRICE_RUB.toFixed(2), currency: 'RUB' },
           vat_code: VAT_CODE,
           payment_mode: 'full_payment',
           payment_subject: 'service',
@@ -636,7 +629,7 @@ async function handleUpdate(update) {
     const sp = update.message.successful_payment;
     // Валидация платежа — Pro выдаём ТОЛЬКО за реальную оплату нужной суммы (защита от подделки апдейта).
     const payloadOk = typeof sp.invoice_payload === 'string' && sp.invoice_payload.startsWith(`pro_${userId}_`);
-    const amountOk = sp.currency === 'RUB' && (Number(sp.total_amount) === PRO_PRICE_RUB * 100 || Number(sp.total_amount) === PRO_PRICE_ORIGINAL_RUB * 100);
+    const amountOk = sp.currency === 'RUB' && Number(sp.total_amount) === PRO_PRICE_RUB * 100;
     if (!payloadOk || !amountOk) {
       console.log('[payment] ОТКЛОНЁН подозрительный платёж userId', userId, '| payloadOk', payloadOk, '| currency', sp.currency, '| amount', sp.total_amount);
       return;
