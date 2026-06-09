@@ -67,19 +67,26 @@ let webToken = '';
 async function verifyWebPro() {
   if (!BACKEND_READY) return;
   const params = new URLSearchParams(location.search);
-  const token = (params.get('paid') || localStorage.getItem(WEB_TOKEN_KEY) || '').trim();
+  const fromUrl = (params.get('paid') || '').trim();
+  if (fromUrl) { try { localStorage.setItem(WEB_TOKEN_KEY, fromUrl); } catch (_) {} } // сразу сохраняем токен возврата (вдруг вебхук задержится)
   if (params.has('paid')) history.replaceState(null, '', location.pathname + location.hash); // прячем токен из адреса
+  const token = fromUrl || (localStorage.getItem(WEB_TOKEN_KEY) || '').trim();
   if (!token) return;
-  try {
-    const res = await fetch(`${BACKEND_URL}/web/pro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
-    const data = await res.json().catch(() => ({}));
-    if (data.isPro) {
-      try { localStorage.setItem(WEB_TOKEN_KEY, token); } catch (_) {}
-      webToken = token;
-      if (!isPro) { isPro = true; applyProLock(); recalc(); }
-      showWebClaim(token);
-    }
-  } catch (_) {}
+  // Вебхук ЮKassa может прийти на пару секунд позже редиректа — если только что вернулись с оплаты, повторяем проверку.
+  const attempts = fromUrl ? 6 : 1;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/web/pro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+      const data = await res.json().catch(() => ({}));
+      if (data.isPro) {
+        webToken = token;
+        if (!isPro) { isPro = true; applyProLock(); recalc(); }
+        showWebClaim(token);
+        return;
+      }
+    } catch (_) {}
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2500)); // ждём подтверждение оплаты вебхуком
+  }
 }
 
 // Запуск веб-оплаты: email для чека → сервер создаёт платёж ЮKassa → редирект на оплату.
