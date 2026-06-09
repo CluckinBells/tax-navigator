@@ -868,3 +868,5 @@ applyProLock();
 recalc();
 verifyWebPro();
 if (!isTelegram()) { const b = $('webPayBox'); if (b) b.hidden = false; } // в браузере показываем поле email для веб-оплаты
+// Вход «Купить картой» с лендинга (?buy=1) → сразу открываем окно оплаты с полем email.
+if (new URLSearchParams(location.search).get('buy') === '1') { openPaywall(); setTimeout(() => $('webEmail')?.focus(), 120); }
