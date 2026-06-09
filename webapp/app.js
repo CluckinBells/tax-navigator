@@ -54,6 +54,8 @@ if (tg) {
 const BOT_USERNAME = 'taxes_navigator_bot';
 const REM_FAMILY_BY_REGIME = { usn6: 'usn', usn15: 'usn', psn: 'psn', ausn8: 'ausn', ausn20: 'ausn' };
 const FAMILY_LABEL = { usn: 'УСН', psn: 'Патент', ausn: 'АУСН' };
+// Виральный шеринг: ссылка ведёт сразу в бота с меткой источника (её считает /srcstats).
+const SHARE_LINK = `https://t.me/${BOT_USERNAME}?start=share`;
 
 // Спрашиваем бэкенд, есть ли у пользователя Pro (надёжная проверка по подписи).
 async function verifyProWithBackend() {
@@ -191,6 +193,7 @@ function recalc() {
   renderBest(res);
   renderCompare(res);
   renderRemindCta(res);
+  renderShareCta(res);
   if (isPro) {
     renderVerdict(res, input);
     renderDetail(res);
@@ -217,6 +220,38 @@ $('remindBtn').addEventListener('click', () => {
   const url = `https://t.me/${BOT_USERNAME}?start=${param}`;
   if (tg?.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, '_blank');
+});
+
+// --- Виральная карточка: поделиться расчётом (бесплатно, цикл ИП→ИП) ---
+function buildShareText(res) {
+  if (res && res.savings > 0) {
+    return `Сравнил 6 налоговых режимов ИП на 2026. На невыгодном режиме переплата — до ${formatMoney(res.savings)} в год 😳 Посчитай свой за минуту 👇`;
+  }
+  return 'Сравнил 6 налоговых режимов ИП на 2026 за минуту. Посчитай и ты, где выгоднее 👇';
+}
+
+function renderShareCta(res) {
+  const sec = $('shareCta');
+  if (!sec) return;
+  sec.hidden = false;
+  const title = $('shareCtaTitle');
+  const text = $('shareCtaText');
+  if (res && res.savings > 0) {
+    title.textContent = `Можно экономить до ${formatMoney(res.savings)} в год`;
+    text.textContent = 'Поделись расчётом — знакомому ИП это тоже сэкономит деньги.';
+  } else {
+    title.textContent = 'Поделись калькулятором';
+    text.textContent = 'Отправь знакомому ИП — пусть проверит свой режим за минуту.';
+  }
+}
+
+$('shareBtn').addEventListener('click', () => {
+  tg?.HapticFeedback?.impactOccurred?.('light');
+  const text = buildShareText(lastResult);
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_LINK)}&text=${encodeURIComponent(text)}`;
+  if (tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
+  else if (navigator.share) navigator.share({ text: `${text} ${SHARE_LINK}` }).catch(() => {});
+  else window.open(shareUrl, '_blank');
 });
 
 function renderBest(res) {

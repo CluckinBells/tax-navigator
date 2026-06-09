@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#4f46e5" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=19" />
 </head>
 <body>
   <div class="app">
@@ -65,6 +65,18 @@
     <section class="card">
       <div class="card__title">Все режимы <span class="card__hint">меньше — лучше</span></div>
       <div id="compareList" class="compare"></div>
+    </section>
+
+    <!-- Поделиться расчётом (бесплатно) — виральный цикл ИП→ИП -->
+    <section class="card share-cta" id="shareCta" hidden>
+      <div class="share-cta__head">
+        <span class="share-cta__icon">📣</span>
+        <div>
+          <div class="share-cta__title" id="shareCtaTitle">Поделись расчётом</div>
+          <div class="share-cta__text" id="shareCtaText">Знакомому ИП это сэкономит деньги — отправь ему калькулятор.</div>
+        </div>
+      </div>
+      <button class="btn btn--primary" id="shareBtn">📣 Поделиться в Telegram</button>
     </section>
 
     <!-- Напоминания о сроках (Pro, ведёт в бота) -->
@@ -161,14 +173,14 @@
         <li>🔔 Напоминания о сроках в Telegram под ваш режим</li>
         <li>🔄 Обновления ставок и лимитов на 2026</li>
       </ul>
-      <button class="btn btn--primary" id="buyProBtn">Оформить Pro — 1990 ₽ навсегда</button>
+      <button class="btn btn--primary" id="buyProBtn">Оформить Pro — <s class="price-old">1990 ₽</s> 990 ₽ навсегда</button>
       <p id="payNote" style="display:none; margin:10px 0 0; padding:10px 12px; background:rgba(127,127,127,.15); border-radius:9px; font-size:13px; line-height:1.45; color:var(--text);"></p>
 
       <button class="btn btn--text" data-close>Позже</button>
-      <p class="sheet__note">Разовая оплата, доступ навсегда. Окупается одной верной сменой режима.</p>
+      <p class="sheet__note">🚀 Цена запуска: <s class="price-old">1990 ₽</s> 990 ₽. Разовая оплата, доступ навсегда — окупается одной верной сменой режима.</p>
     </div>
   </div>
 
-  <script type="module" src="app.js?v=18"></script>
+  <script type="module" src="app.js?v=19"></script>
 </body>
 </html>
