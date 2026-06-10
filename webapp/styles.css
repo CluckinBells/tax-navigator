@@ -235,9 +235,18 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
   color: var(--hint); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
 }
 .tabbar__btn.is-active { color: #a5b4fc; }
-.tabbar__btn:active { transform: scale(.96); }
+.tabbar__btn:active .tabbar__ico { transform: scale(.92); }
 .tabbar__btn svg { display: block; }
+/* Капсула-индикатор под иконкой активной вкладки (как в @wallet) */
+.tabbar__ico { display: grid; place-items: center; padding: 4px 18px; border-radius: 999px; transition: background .22s ease, transform .12s ease; }
+.tabbar__btn.is-active .tabbar__ico { background: var(--brand-soft); }
 .tab-panel[hidden] { display: none; }
+/* Анимация перехода между вкладками — контент въезжает в сторону движения */
+@keyframes tabInFwd { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes tabInBack { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+.tab-in-fwd { animation: tabInFwd .26s cubic-bezier(.2, .8, .2, 1); }
+.tab-in-back { animation: tabInBack .26s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .tab-in-fwd, .tab-in-back { animation: none; } }
 
 /* Вкладка «Профиль» */
 .pstatus { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 4px; }

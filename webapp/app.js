@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=31';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=31';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=31';
-import { computeSetAside } from '../shared/setaside.js?v=31';
-import { formatDateRu } from '../shared/reminders.js?v=31';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=32';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=32';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=32';
+import { computeSetAside } from '../shared/setaside.js?v=32';
+import { formatDateRu } from '../shared/reminders.js?v=32';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -914,8 +914,24 @@ $('privacyLink')?.addEventListener('click', (e) => {
 });
 
 // --- Нижняя таб-навигация (Расчёт / Сроки / Профиль) ---
+const TAB_ORDER = ['calc', 'dates', 'profile'];
+let currentTabIdx = 0;
 function switchTab(name) {
-  ['calc', 'dates', 'profile'].forEach((t) => { const p = $(`tab-${t}`); if (p) p.hidden = t !== name; });
+  const newIdx = TAB_ORDER.indexOf(name);
+  if (newIdx === -1 || newIdx === currentTabIdx) return;
+  const cls = newIdx > currentTabIdx ? 'tab-in-fwd' : 'tab-in-back';
+  TAB_ORDER.forEach((t) => {
+    const p = $(`tab-${t}`);
+    if (!p) return;
+    const show = t === name;
+    p.hidden = !show;
+    if (show) {
+      p.classList.remove('tab-in-fwd', 'tab-in-back');
+      void p.offsetWidth; // рефлоу — гарантированно перезапускаем анимацию
+      p.classList.add(cls);
+    }
+  });
+  currentTabIdx = newIdx;
   document.querySelectorAll('.tabbar__btn').forEach((b) => {
     const on = b.dataset.tab === name;
     b.classList.toggle('is-active', on);
