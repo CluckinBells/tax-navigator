@@ -1,0 +1,23 @@
+name: tests
+
+# Гейт качества: прогоняем эталонные тесты движка при каждом пуше/PR.
+# shared/params.js и engine.js отдаются и на сайт, и в Mini App, и в PDF —
+# регрессия в налоговой математике не должна уезжать в прод незамеченной.
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Проверка движка по эталонам из Excel
+        run: node test/verify.js
