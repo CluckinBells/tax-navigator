@@ -12,7 +12,7 @@
 // Зависимости: только встроенный http + fetch (Node 18+). Без npm-пакетов.
 
 import http from 'node:http';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import crypto from 'node:crypto';
 import { nextDeadline } from '../shared/engine.js';
 import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
@@ -70,6 +70,17 @@ const TG_TIMEOUT_MS = Number(process.env.TG_TIMEOUT_MS || 12000);
 // (или setWebhook не удался) — заголовок НЕ требуем, чтобы случайно не заблокировать бота.
 let webhookSecretApplied = false;
 
+// --- Лимиты и анти-абуз (батч безопасности) ---
+// Лимит размера тела запроса (защита от OOM/DoS): апдейты Telegram и наши POST много меньше.
+const MAX_BODY = Number(process.env.MAX_BODY || 64 * 1024);
+// TTL подписи initData (сек): защита от воспроизведения перехваченной строки. Mini App шлёт свежую при каждом открытии.
+const INITDATA_TTL_SEC = Number(process.env.INITDATA_TTL_SEC || 86400);
+// Анти-абуз веб-оплаты: не больше N созданий платежа с одного IP за окно (бережёт ЮKassa и web-pro.json).
+const WEBPAY_MAX = Number(process.env.WEBPAY_MAX || 20);
+const WEBPAY_WINDOW_MS = Number(process.env.WEBPAY_WINDOW_MS || 10 * 60 * 1000);
+// Сколько дней claim-ссылка валидна после оплаты (ограничивает срок жизни утёкшего токена).
+const CLAIM_TTL_DAYS = Number(process.env.CLAIM_TTL_DAYS || 14);
+
 // Отказоустойчивость: один плохой апдейт/промис не должен ронять процесс (иначе краш-петля —
 // Telegram переотправляет тот же апдейт снова и снова).
 process.on('unhandledRejection', (e) => console.log('[unhandledRejection]', e?.message || e));
@@ -99,21 +110,26 @@ try {
   // Совместимость со старым форматом (объект {id: дата} → берём ключи как бессрочный доступ).
   if (Array.isArray(raw)) proUsers = new Set(raw.map(String));
   else proUsers = new Set(Object.keys(raw));
-} catch (_) {}
+} catch (e) { if (e.code !== 'ENOENT') console.log('[store] pro-users.json не прочитан (начинаю с пустого):', e.message); }
 // Карта «платёж ЮKassa → userId» — чтобы при возврате знать, у кого забрать Pro.
 // ЮKassa в уведомлении о возврате присылает id платежа, а не Telegram userId.
 const PAY_MAP_PATH = process.env.DATA_DIR
   ? new URL('payments.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
   : new URL('./payments.json', import.meta.url);
 let payToUser = {};
-try { payToUser = JSON.parse(readFileSync(PAY_MAP_PATH, 'utf8')); } catch (_) {}
+try { payToUser = JSON.parse(readFileSync(PAY_MAP_PATH, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') console.log('[store] payments.json не прочитан:', e.message); }
 
-function saveDb() {
-  try { writeFileSync(DB_PATH, JSON.stringify([...proUsers])); } catch (_) {}
+// Атомарная запись JSON: пишем во временный файл и переименовываем (rename атомарен в пределах
+// одной ФС). Защищает от повреждения файла при падении/рестарте посреди записи (потеря оплат).
+function writeJsonAtomic(pathUrl, value) {
+  try {
+    const tmp = new URL(pathUrl.href + '.tmp');
+    writeFileSync(tmp, JSON.stringify(value));
+    renameSync(tmp, pathUrl);
+  } catch (e) { console.log('[store] ошибка записи', String(pathUrl).split('/').pop(), e?.message || e); }
 }
-function savePayMap() {
-  try { writeFileSync(PAY_MAP_PATH, JSON.stringify(payToUser)); } catch (_) {}
-}
+function saveDb() { writeJsonAtomic(DB_PATH, [...proUsers]); }
+function savePayMap() { writeJsonAtomic(PAY_MAP_PATH, payToUser); }
 function grantPro(userId) { proUsers.add(String(userId)); saveDb(); }
 function revokePro(userId) { proUsers.delete(String(userId)); saveDb(); }
 function isPro(userId) { return proUsers.has(String(userId)); }
@@ -129,7 +145,7 @@ const REM_PATH = process.env.DATA_DIR
   : new URL('./reminders.json', import.meta.url);
 let reminders = {};
 try { reminders = JSON.parse(readFileSync(REM_PATH, 'utf8')); } catch (_) {}
-function saveReminders() { try { writeFileSync(REM_PATH, JSON.stringify(reminders)); } catch (_) {} }
+function saveReminders() { writeJsonAtomic(REM_PATH, reminders); }
 const isoToday = () => new Date().toISOString().slice(0, 10);
 function subscribeReminders(userId, chatId, regime) {
   const id = String(userId);
@@ -150,7 +166,7 @@ try {
   const s = JSON.parse(readFileSync(SRC_PATH, 'utf8'));
   if (s && s.sources && s.seen) sourceStats = s;
 } catch (_) {}
-function saveSources() { try { writeFileSync(SRC_PATH, JSON.stringify(sourceStats)); } catch (_) {} }
+function saveSources() { writeJsonAtomic(SRC_PATH, sourceStats); }
 
 // --- Хранилище веб-оплат Pro (покупки с сайта через ЮKassa API) ---
 // web-pro.json: { <token>: { paid, paymentId, amount, createdAt, paidAt, claimedBy } }. Логика — shared/webpro.js.
@@ -158,8 +174,28 @@ const WEBPRO_PATH = process.env.DATA_DIR
   ? new URL('web-pro.json', `file://${process.env.DATA_DIR.replace(/\/?$/, '/')}`)
   : new URL('./web-pro.json', import.meta.url);
 let webPro = {};
-try { webPro = JSON.parse(readFileSync(WEBPRO_PATH, 'utf8')); } catch (_) {}
-function saveWebPro() { try { writeFileSync(WEBPRO_PATH, JSON.stringify(webPro)); } catch (_) {} }
+try { webPro = JSON.parse(readFileSync(WEBPRO_PATH, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') console.log('[store] web-pro.json не прочитан:', e.message); }
+function saveWebPro() { writeJsonAtomic(WEBPRO_PATH, webPro); }
+
+// --- Анти-абуз веб-оплаты: лимит по IP + уборка протухших неоплаченных pending ---
+const webPayHits = new Map();
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';
+}
+function webPayRateLimited(ip) {
+  const now = Date.now();
+  const arr = (webPayHits.get(ip) || []).filter((t) => now - t < WEBPAY_WINDOW_MS);
+  if (arr.length >= WEBPAY_MAX) { webPayHits.set(ip, arr); return true; }
+  arr.push(now); webPayHits.set(ip, arr); return false;
+}
+function cleanupWebPro() {
+  const cutoff = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+  let changed = false;
+  for (const [t, rec] of Object.entries(webPro)) {
+    if (!rec.paid && !rec.claimedBy && (rec.createdAt || '0000-00-00') < cutoff) { delete webPro[t]; changed = true; }
+  }
+  if (changed) saveWebPro();
+}
 
 // Создание платежа через API ЮKassa (Basic-auth shopId:secretKey). Возвращает {ok,id,confirmationUrl,error}.
 async function yookassaCreatePayment({ amount, email, token }) {
@@ -240,6 +276,17 @@ async function tg(method, body) {
   }
 }
 
+// --- Утилиты безопасности ---
+// Сравнение секретов/хешей за константное время (защита от тайминг-атак). false при разной длине.
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  if (ba.length !== bb.length) return false;
+  try { return crypto.timingSafeEqual(ba, bb); } catch { return false; }
+}
+// Маскирование секрета/токена для логов (не пишем целиком в логи Amvera).
+const redact = (s) => { const v = String(s || ''); return v.length > 8 ? v.slice(0, 6) + '…' : '***'; };
+
 // --- Проверка подписи initData из Mini App (важно для безопасности!) ---
 // Гарантирует, что запрос реально пришёл из Telegram, а не подделан.
 function verifyInitData(initData) {
@@ -253,7 +300,10 @@ function verifyInitData(initData) {
       .join('\n');
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
     const calcHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    if (calcHash !== hash) return null;
+    if (!hash || !safeEqual(calcHash, hash)) return null;
+    // Свежесть initData: отклоняем слишком старую (защита от воспроизведения перехваченной строки).
+    const authDate = Number(params.get('auth_date') || 0);
+    if (!authDate || (Date.now() / 1000 - authDate) > INITDATA_TTL_SEC) return null;
     const user = JSON.parse(params.get('user') || '{}');
     return user;
   } catch (_) {
@@ -322,6 +372,8 @@ const server = http.createServer(async (req, res) => {
   // 2b) Сайт просит создать веб-платёж ЮKassa (оплата картой на сайте, без Telegram).
   if (req.url === '/web/create-payment' && req.method === 'POST') {
     if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) return json(res, 503, { error: 'веб-оплата не настроена' });
+    if (webPayRateLimited(clientIp(req))) return json(res, 429, { error: 'слишком много запросов, попробуйте позже' });
+    cleanupWebPro();
     const email = String(body.email || '').trim(); // опционально (для чека 54-ФЗ); без него чек на стороне ЮKassa
     const token = crypto.randomBytes(16).toString('hex');
     const yk = await yookassaCreatePayment({ amount: PRO_PRICE_RUB.toFixed(2), email, token });
@@ -342,7 +394,7 @@ const server = http.createServer(async (req, res) => {
       if (p.ok && p.status === 'succeeded') {
         webPro = markPaid(webPro, token, rec.paymentId, isoToday());
         saveWebPro();
-        console.log('[web-pay] подтверждено через API ЮKassa: token', token, 'payment', rec.paymentId);
+        console.log('[web-pay] подтверждено через API ЮKassa: token', redact(token), 'payment', rec.paymentId);
         return json(res, 200, { isPro: true });
       }
     }
@@ -353,7 +405,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url === `/webhook/${BOT_TOKEN}` && req.method === 'POST') {
     // Проверяем, что запрос реально от Telegram (secret_token). Защита от подделки апдейтов.
     // Требуем заголовок только когда секрет точно применён (fail-safe против самоблокировки).
-    if (webhookSecretApplied && (req.headers['x-telegram-bot-api-secret-token'] || '') !== WEBHOOK_SECRET) {
+    if (webhookSecretApplied && !safeEqual(req.headers['x-telegram-bot-api-secret-token'] || '', WEBHOOK_SECRET)) {
       return json(res, 403, { ok: false });
     }
     try { await handleUpdate(body); }
@@ -367,7 +419,7 @@ const server = http.createServer(async (req, res) => {
     // Аутентификация: ЮKassa шлёт на URL с секретом (?s=<YOOKASSA_WEBHOOK_SECRET>). Без заданного
     // секрета или при несовпадении — отклоняем (иначе любой POST мог снять Pro у пользователя).
     const provided = (() => { const i = req.url.indexOf('?s='); return i >= 0 ? decodeURIComponent(req.url.slice(i + 3).split('&')[0]) : (req.headers['x-webhook-secret'] || ''); })();
-    if (!YOOKASSA_WEBHOOK_SECRET || provided !== YOOKASSA_WEBHOOK_SECRET) {
+    if (!YOOKASSA_WEBHOOK_SECRET || !safeEqual(provided, YOOKASSA_WEBHOOK_SECRET)) {
       console.log('[yookassa-webhook] отклонён: неверный или отсутствующий секрет');
       return json(res, 403, { ok: false });
     }
@@ -399,9 +451,9 @@ const server = http.createServer(async (req, res) => {
         if (token && webPro[token]) {
           webPro = markPaid(webPro, token, obj.id, isoToday());
           saveWebPro();
-          console.log('[web-pay] оплачено: token', token, 'payment', obj.id);
+          console.log('[web-pay] оплачено: token', redact(token), 'payment', obj.id);
         } else {
-          console.log('[web-pay] payment.succeeded без известного token:', token);
+          console.log('[web-pay] payment.succeeded без известного token:', redact(token));
         }
       }
     } catch (e) {
@@ -411,7 +463,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-09-gh11' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-10-gh12' });
 });
 
 // --- Главное меню бота ---
@@ -668,15 +720,23 @@ async function handleUpdate(update) {
     // Deep-link «claim_<token>» — перенос веб-оплаты в Telegram: проверяем оплату на сервере → выдаём Pro.
     if (payload.startsWith('claim_')) {
       const token = payload.slice('claim_'.length);
+      const rec = webPro[token];
+      // claim-ссылка действительна ограниченное время после оплаты (ограничивает срок жизни утёкшего токена).
+      const claimCutoff = new Date(Date.now() - CLAIM_TTL_DAYS * 864e5).toISOString().slice(0, 10);
+      const claimFresh = !!rec && (rec.paidAt || rec.createdAt || '0000-00-00') >= claimCutoff;
       let text;
       if (isPro(fromId)) {
         text = '✅ У вас уже есть Pro в Telegram — доступ навсегда. Откройте калькулятор, все функции активны.';
-      } else if (isPaid(webPro, token) && !isClaimed(webPro, token)) {
+      } else if (isPaid(webPro, token) && !isClaimed(webPro, token) && claimFresh) {
         grantPro(fromId);
         webPro = markClaimed(webPro, token, fromId); saveWebPro();
+        // Привязываем платёж ЮKassa к пользователю — чтобы возврат по веб-оплате снял Pro.
+        rememberPayment(rec?.paymentId, fromId);
         text = '🎉 Pro активирован в Telegram! Спасибо за покупку. Все Pro-функции открыты — нажмите «Открыть калькулятор».';
       } else if (isPaid(webPro, token) && isClaimed(webPro, token)) {
         text = 'Эта покупка уже привязана к аккаунту Telegram. Если это ошибка — напишите нам.';
+      } else if (isPaid(webPro, token) && !claimFresh) {
+        text = 'Ссылка активации устарела. Напишите нам (filimonov.filimonov05@mail.ru) — поможем перенести Pro в Telegram.';
       } else {
         text = 'Не удалось подтвердить покупку по ссылке (возможно, оплата ещё обрабатывается — попробуйте через минуту). Если вы оплатили на сайте — напишите нам, поможем.';
       }
@@ -847,9 +907,14 @@ async function runReminderCheck() {
 function readBody(req) {
   return new Promise((resolve) => {
     let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } });
-    req.on('error', () => resolve({}));
+    let aborted = false;
+    req.on('data', (c) => {
+      if (aborted) return;
+      data += c;
+      if (data.length > MAX_BODY) { aborted = true; try { req.destroy(); } catch (_) {} resolve({}); }
+    });
+    req.on('end', () => { if (!aborted) { try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); } } });
+    req.on('error', () => { if (!aborted) resolve({}); });
   });
 }
 function json(res, code, obj) {
