@@ -339,3 +339,42 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
   .hero__cta .btn { flex: 1; }
   .cta-final__box { padding: 44px 24px; }
 }
+
+/* ===== Анимации появления (премиум-тонко) ===== */
+/* Используем CSS-свойство translate (не transform) — оно компонуется с hover-transform карточек/кнопок */
+.anim .section__head,
+.anim .problem__col,
+.anim .calc__layout,
+.anim .feature,
+.anim .plan,
+.anim .faq__item,
+.anim .cta-final__box {
+  opacity: 0; translate: 0 18px;
+  transition: opacity .6s ease, translate .65s cubic-bezier(.2, .7, .2, 1);
+}
+.anim .av-in { opacity: 1; translate: 0 0; }
+
+/* Hero — каскадный вход на загрузке */
+.anim .hero__content > * { animation: heroIn .7s cubic-bezier(.2, .7, .2, 1) both; }
+.anim .hero__content > *:nth-child(1) { animation-delay: .05s; }
+.anim .hero__content > *:nth-child(2) { animation-delay: .12s; }
+.anim .hero__content > *:nth-child(3) { animation-delay: .19s; }
+.anim .hero__content > *:nth-child(4) { animation-delay: .26s; }
+.anim .hero__content > *:nth-child(5) { animation-delay: .33s; }
+.anim .hero__content > *:nth-child(6) { animation-delay: .40s; }
+.anim .hero__preview { animation: heroIn .8s cubic-bezier(.2, .7, .2, 1) .28s both; }
+@keyframes heroIn { from { opacity: 0; translate: 0 16px; } to { opacity: 1; translate: 0 0; } }
+
+/* Медленный дрейф свечения hero — глубина без шума */
+.hero__glow { animation: glowDrift 18s ease-in-out infinite alternate; will-change: transform; }
+@keyframes glowDrift { from { transform: translate3d(-2%, -1%, 0) scale(1); } to { transform: translate3d(3%, 2%, 0) scale(1.08); } }
+
+/* Рост баров в превью результата */
+.anim .rcard__bars .bar__track i { transform-origin: left; animation: barGrow 1s cubic-bezier(.2, .7, .2, 1) .5s both; }
+@keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim .section__head, .anim .problem__col, .anim .calc__layout, .anim .feature, .anim .plan, .anim .faq__item, .anim .cta-final__box,
+  .anim .hero__content > *, .anim .hero__preview { opacity: 1 !important; translate: none !important; animation: none !important; }
+  .hero__glow, .anim .rcard__bars .bar__track i, .rcard--float { animation: none !important; }
+}
