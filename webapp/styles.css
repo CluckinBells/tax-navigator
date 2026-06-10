@@ -256,6 +256,19 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px;
 .about-text { font-size: 13px; color: var(--hint); line-height: 1.6; margin-bottom: 8px; }
 .about-text:last-child { margin-bottom: 0; }
 .about-link { color: var(--link); font-weight: 600; text-decoration: none; }
+/* Профиль: «ваш режим» */
+.pregime { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.pregime__name { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.pregime__sub { font-size: 12.5px; color: var(--hint); margin-top: 2px; }
+/* Профиль: сохранённые расчёты */
+.scalc-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.scalc { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--card-line); border-radius: 12px; background: var(--bg-secondary); cursor: pointer; transition: transform .1s ease; }
+.scalc:active { transform: scale(.99); }
+.scalc__main { flex: 1; min-width: 0; }
+.scalc__name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scalc__sub { font-size: 12px; color: var(--hint); margin-top: 2px; }
+.scalc__del { flex: none; width: 28px; height: 28px; border-radius: 8px; border: none; background: rgba(127, 127, 127, .15); color: var(--hint); font-family: inherit; font-size: 13px; cursor: pointer; }
+.scalc__del:active { transform: scale(.9); }
 
 /* CTA «включить напоминания» (Pro) */
 .remind-cta { display: flex; flex-direction: column; gap: 14px; }

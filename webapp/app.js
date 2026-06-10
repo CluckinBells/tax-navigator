@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=32';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=32';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=32';
-import { computeSetAside } from '../shared/setaside.js?v=32';
-import { formatDateRu } from '../shared/reminders.js?v=32';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=33';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=33';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=33';
+import { computeSetAside } from '../shared/setaside.js?v=33';
+import { formatDateRu } from '../shared/reminders.js?v=33';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -303,6 +303,7 @@ function recalc() {
     renderSetAside(res, input);
     renderDeclaration(res, input);
   }
+  renderProfile();
 }
 
 // CTA «включить напоминания» (Pro): кнопка под лучший режим ведёт в бота;
@@ -315,13 +316,16 @@ function renderRemindCta(res) {
   if (!isPro) { btn.textContent = '🔔 Включить напоминания — в Pro'; return; }
   btn.textContent = fam ? `🔔 Напоминать о сроках (${FAMILY_LABEL[fam]})` : '🔔 Включить напоминания о сроках';
 }
-$('remindBtn').addEventListener('click', () => {
+// Переход к напоминаниям (общий для кнопки на «Сроки» и в «Профиле»): Pro → deep-link в бота, иначе пейволл.
+function goToReminders() {
   if (!isPro) { openPaywall(); return; } // напоминания — часть Pro
-  const param = $('remindBtn').dataset.param || 'reminders';
+  const fam = lastResult && lastResult.best ? REM_FAMILY_BY_REGIME[lastResult.best.id] : null;
+  const param = fam ? `rem_${fam}` : 'reminders';
   const url = `https://t.me/${BOT_USERNAME}?start=${param}`;
   if (tg?.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, '_blank');
-});
+}
+$('remindBtn').addEventListener('click', goToReminders);
 
 // --- Виральная карточка: поделиться расчётом (бесплатно, цикл ИП→ИП) ---
 function buildShareText(res) {
@@ -800,15 +804,6 @@ function applyProLock() {
       if (!$(target).innerHTML) $(target).innerHTML = '<div style="height:120px"></div>';
     }
   });
-
-  // Карточка статуса во вкладке «Профиль».
-  const ps = $('profileStatus');
-  if (ps) {
-    ps.innerHTML = isPro
-      ? `<div class="pstatus"><span class="pstatus__icon">💎</span><div><div class="pstatus__title">Pro активен — навсегда</div><div class="pstatus__text">Открыто всё: разбор, сценарии, календарь, «подушка», декларация и напоминания. Обновления ставок 2026 включены.</div></div></div>`
-      : `<div class="pstatus"><span class="pstatus__icon">🔓</span><div><div class="pstatus__title">Бесплатная версия</div><div class="pstatus__text">Сравнение режимов и экономия — бесплатно. Pro добавляет разбор, сценарии, календарь с напоминаниями, «подушку» и черновик декларации.</div></div></div><button class="btn btn--primary" id="profileBuyBtn">Открыть Pro — <s class="price-old">1990 ₽</s> 990 ₽ навсегда</button>`;
-    $('profileBuyBtn')?.addEventListener('click', openPaywall);
-  }
 }
 
 // --- Paywall и оплата ---
@@ -953,6 +948,137 @@ $('ofertaLink')?.addEventListener('click', (e) => {
   const u = 'https://navnalog.ru/oferta.html';
   if (tg?.openLink) tg.openLink(u);
   else window.open(u, '_blank');
+});
+
+// --- Профиль: хаб (статус с экономией, режим+напоминания, сохранённые расчёты, мои данные) ---
+// Всё на устройстве (localStorage). Связывает калькулятор → сроки → статус в одном месте.
+const SAVED_KEY = 'tn_saved_calcs';
+const SAVED_MAX = 12;
+const DEFAULT_INPUT = { revenue: 5000000, expenses: 2000000, individualsShare: 0.3, employees: 0, ausnRegion: true, patentAvailable: true, patentCost: 30000 };
+
+function getSavedCalcs() {
+  try { const a = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; }
+}
+function setSavedCalcs(list) { try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); } catch (_) {} }
+function setChip(chip, on) { chip.dataset.on = String(on); chip.querySelector('span').textContent = on ? 'Да' : 'Нет'; }
+
+// Заполнить форму нормализованным input (из сохранённого расчёта / сброса данных).
+function applyInputToForm(input) {
+  F.revenue.value = input.revenue ? input.revenue.toLocaleString('ru-RU') : '';
+  F.expenses.value = input.expenses ? input.expenses.toLocaleString('ru-RU') : '';
+  const pct = Math.round((input.individualsShare || 0) * 100);
+  F.individualsShare.value = pct; F.indivOut.textContent = pct + '%';
+  F.employees.value = input.employees || 0;
+  setChip(F.ausnRegion, !!input.ausnRegion);
+  setChip(F.patentAvailable, !!input.patentAvailable);
+  F.patentCostField.style.display = input.patentAvailable ? '' : 'none';
+  F.patentCost.value = input.patentCost ? input.patentCost.toLocaleString('ru-RU') : '';
+}
+
+function saveCurrentCalc() {
+  if (!lastInput || !lastResult) return;
+  const best = lastResult.best;
+  const item = {
+    id: 'c' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    name: `${best ? best.name : 'Расчёт'} · ${formatShort(lastInput.revenue || 0)}`,
+    input: lastInput,
+    bestName: best ? best.name : null,
+    bestTotal: best ? best.total : 0,
+  };
+  const list = getSavedCalcs();
+  list.unshift(item);
+  if (list.length > SAVED_MAX) list.length = SAVED_MAX;
+  setSavedCalcs(list);
+  tg?.HapticFeedback?.notificationOccurred?.('success');
+  renderSavedCalcs();
+}
+function loadCalc(id) {
+  const c = getSavedCalcs().find((x) => x.id === id);
+  if (!c || !c.input) return;
+  applyInputToForm(c.input);
+  recalc();
+  switchTab('calc'); // показываем загруженный расчёт
+  tg?.HapticFeedback?.impactOccurred?.('light');
+}
+function deleteCalc(id) {
+  setSavedCalcs(getSavedCalcs().filter((x) => x.id !== id));
+  tg?.HapticFeedback?.impactOccurred?.('light');
+  renderSavedCalcs();
+}
+function clearMyData() {
+  const doClear = () => {
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SAVED_KEY); } catch (_) {}
+    applyInputToForm(DEFAULT_INPUT); // сброс формы к значениям по умолчанию (Pro-токен НЕ трогаем)
+    recalc();
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+  };
+  const msg = 'Введённые цифры и сохранённые расчёты будут удалены с этого устройства. Доступ к Pro сохранится.';
+  if (tg?.showPopup) {
+    tg.showPopup({ title: 'Очистить мои данные?', message: msg, buttons: [{ id: 'ok', type: 'destructive', text: 'Очистить' }, { type: 'cancel' }] }, (id) => { if (id === 'ok') doClear(); });
+  } else if (confirm(msg)) { doClear(); }
+}
+
+function renderSavedCalcs() {
+  const el = $('profileSaved');
+  if (!el) return;
+  const list = getSavedCalcs();
+  const rows = list.map((c) =>
+    `<div class="scalc" data-paction="load-calc" data-id="${c.id}">
+      <div class="scalc__main"><div class="scalc__name">${escapeHtml(c.name)}</div><div class="scalc__sub">выгодно: ${escapeHtml(c.bestName || '—')} · ${formatMoney(c.bestTotal)}/год</div></div>
+      <button class="scalc__del" type="button" data-paction="del-calc" data-id="${c.id}" aria-label="Удалить">✕</button>
+    </div>`
+  ).join('');
+  el.innerHTML =
+    `<div class="card__title">Сохранённые расчёты${list.length ? ` <span class="card__hint">${list.length}/${SAVED_MAX}</span>` : ''}</div>` +
+    (list.length ? `<div class="scalc-list">${rows}</div>` : `<p class="about-text">Сохраняйте расчёты («Мой бизнес», «Если найму 2 человек») — и возвращайтесь к ним в один тап.</p>`) +
+    `<button class="btn btn--primary" type="button" data-paction="save-calc">💾 Сохранить текущий расчёт</button>`;
+}
+
+function renderProfile() {
+  const res = lastResult;
+  const ps = $('profileStatus');
+  if (ps) {
+    if (isPro) {
+      ps.innerHTML = `<div class="pstatus"><span class="pstatus__icon">💎</span><div><div class="pstatus__title">Pro активен — навсегда</div><div class="pstatus__text">Открыто всё: разбор, сценарии, календарь, «подушка», декларация и напоминания. Обновления ставок 2026 включены.</div></div></div>`;
+    } else {
+      const save = res && res.savings > 0 ? ` и заберите свои <b>${formatMoney(res.savings)}</b> экономии в год` : '';
+      ps.innerHTML = `<div class="pstatus"><span class="pstatus__icon">🔓</span><div><div class="pstatus__title">Бесплатная версия</div><div class="pstatus__text">Сравнение режимов и экономия — бесплатно. Откройте Pro${save}: разбор, сценарии, календарь с напоминаниями, «подушка» и черновик декларации.</div></div></div><button class="btn btn--primary" type="button" data-paction="buy">Открыть Pro — <s class="price-old">1990 ₽</s> 990 ₽ навсегда</button>`;
+    }
+  }
+  const pr = $('profileRegime');
+  if (pr) {
+    if (res && res.best) {
+      const fam = REM_FAMILY_BY_REGIME[res.best.id];
+      const remindLabel = !isPro ? '🔔 Включить напоминания — в Pro'
+        : (fam ? `🔔 Напоминать о сроках (${FAMILY_LABEL[fam]})` : '🔔 Включить напоминания о сроках');
+      pr.innerHTML =
+        `<div class="card__title">Ваш режим</div>` +
+        `<div class="pregime"><div><div class="pregime__name">${escapeHtml(res.best.name)}</div><div class="pregime__sub">по вашему расчёту · ${formatMoney(res.best.total)} налогов в год</div></div></div>` +
+        `<button class="btn btn--primary" type="button" data-paction="remind">${remindLabel}</button>`;
+    } else {
+      pr.innerHTML = `<div class="card__title">Ваш режим</div><p class="about-text">Заполните расчёт на вкладке «Расчёт» — здесь появятся ваш выгодный режим и напоминания о сроках.</p>`;
+    }
+  }
+  renderSavedCalcs();
+  const pd = $('profileData');
+  if (pd) {
+    pd.innerHTML =
+      `<div class="card__title">Мои данные</div>` +
+      `<p class="about-text">Введённые цифры и сохранённые расчёты хранятся <b>только на этом устройстве</b> и не отправляются на сервер.</p>` +
+      `<button class="btn btn--text" type="button" data-paction="clear-data">🗑 Очистить мои данные</button>`;
+  }
+}
+
+// Делегированные клики во вкладке «Профиль» (контент рендерится динамически).
+$('tab-profile')?.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-paction]');
+  if (!el) return;
+  const a = el.dataset.paction;
+  if (a === 'buy') openPaywall();
+  else if (a === 'remind') goToReminders();
+  else if (a === 'save-calc') saveCurrentCalc();
+  else if (a === 'load-calc') loadCalc(el.dataset.id);
+  else if (a === 'del-calc') deleteCalc(el.dataset.id);
 });
 
 // --- Старт ---
