@@ -1,6 +1,6 @@
 // Живой демо-калькулятор на лендинге (бесплатный режим).
-import { calculateAll } from './shared/engine.js?v=28';
-import { formatMoney, formatPercent, parseMoney } from './shared/format.js?v=28';
+import { calculateAll } from './shared/engine.js?v=29';
+import { formatMoney, formatPercent, parseMoney } from './shared/format.js?v=29';
 
 const $ = (id) => document.getElementById(id);
 
