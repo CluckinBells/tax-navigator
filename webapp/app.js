@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=33';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=33';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=33';
-import { computeSetAside } from '../shared/setaside.js?v=33';
-import { formatDateRu } from '../shared/reminders.js?v=33';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=34';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=34';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=34';
+import { computeSetAside } from '../shared/setaside.js?v=34';
+import { formatDateRu } from '../shared/reminders.js?v=34';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -18,9 +18,10 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   const text = btn.getAttribute('data-help') || '';
   tg?.HapticFeedback?.impactOccurred?.('light');
-  if (tg?.showPopup) {
+  // showPopup/showAlert работают только внутри реального Telegram — иначе (веб) alert.
+  if (isTelegram() && tg?.showPopup) {
     tg.showPopup({ title: 'Подсказка', message: text, buttons: [{ type: 'ok' }] });
-  } else if (tg?.showAlert) {
+  } else if (isTelegram() && tg?.showAlert) {
     tg.showAlert(text);
   } else {
     alert(text);
@@ -1013,7 +1014,9 @@ function clearMyData() {
     tg?.HapticFeedback?.notificationOccurred?.('success');
   };
   const msg = 'Введённые цифры и сохранённые расчёты будут удалены с этого устройства. Доступ к Pro сохранится.';
-  if (tg?.showPopup) {
+  // В реальном Telegram — нативный showPopup; в обычном браузере (веб-оплата) showPopup есть, но не
+  // работает → используем confirm. Поэтому гейтим по isTelegram(), а не по наличию метода.
+  if (isTelegram() && tg?.showPopup) {
     tg.showPopup({ title: 'Очистить мои данные?', message: msg, buttons: [{ id: 'ok', type: 'destructive', text: 'Очистить' }, { type: 'cancel' }] }, (id) => { if (id === 'ok') doClear(); });
   } else if (confirm(msg)) { doClear(); }
 }
@@ -1079,6 +1082,7 @@ $('tab-profile')?.addEventListener('click', (e) => {
   else if (a === 'save-calc') saveCurrentCalc();
   else if (a === 'load-calc') loadCalc(el.dataset.id);
   else if (a === 'del-calc') deleteCalc(el.dataset.id);
+  else if (a === 'clear-data') clearMyData();
 });
 
 // --- Старт ---
