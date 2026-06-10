@@ -32,3 +32,29 @@ export function markClaimed(store, token, userId) {
 export function isClaimed(store, token) {
   return !!(token && store[token] && store[token].claimedBy);
 }
+
+// --- Одноразовый код активации в Telegram (claim) ---
+// Долгоживущий token больше НЕ попадает в ссылки: владелец токена запрашивает короткий
+// одноразовый код с ограниченным сроком жизни, и только код едет в t.me/...?start=claim_<код>.
+// Утёкшая/пересланная ссылка после использования или истечения срока бесполезна.
+
+export function issueClaimCode(store, token, code, expiresAt) {
+  const cur = store[token];
+  if (!cur || !cur.paid || cur.claimedBy || !code) return store;
+  return { ...store, [token]: { ...cur, claimCode: code, claimCodeExp: expiresAt } };
+}
+
+export function findTokenByClaimCode(store, code, now) {
+  if (!code) return null;
+  for (const [token, rec] of Object.entries(store)) {
+    if (rec.claimCode === code && rec.paid && !rec.claimedBy && now < rec.claimCodeExp) return token;
+  }
+  return null;
+}
+
+export function clearClaimCode(store, token) {
+  const cur = store[token];
+  if (!cur) return store;
+  const { claimCode, claimCodeExp, ...rest } = cur;
+  return { ...store, [token]: rest };
+}

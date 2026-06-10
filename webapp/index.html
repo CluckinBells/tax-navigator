@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#0a0c15" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css?v=29" />
+  <link rel="stylesheet" href="styles.css?v=31" />
 </head>
 <body>
   <div class="app">
@@ -28,6 +28,9 @@
       <div class="pay-done__text">В Telegram удобнее и есть фишки, которых нет на сайте: напоминания о налоговых сроках прямо в чат и доступ с любого устройства. Перейдите и пользуйтесь там.</div>
       <a class="btn btn--primary pay-done__btn" id="webClaimLink" href="#" target="_blank" rel="noopener">🚀 Открыть Pro в Telegram</a>
     </div>
+
+    <!-- ===== Вкладка «Расчёт» ===== -->
+    <div class="tab-panel" id="tab-calc">
 
     <!-- Форма ввода -->
     <section class="card">
@@ -90,18 +93,6 @@
       <button class="btn btn--primary" id="shareBtn">📣 Поделиться в Telegram</button>
     </section>
 
-    <!-- Напоминания о сроках (Pro, ведёт в бота) -->
-    <section class="card remind-cta">
-      <div class="remind-cta__head">
-        <span class="remind-cta__icon">🔔</span>
-        <div>
-          <div class="remind-cta__title">Не пропустите налоговые сроки <span class="pro-badge">PRO</span></div>
-          <div class="remind-cta__text">Бот напомнит об авансах, взносах и отчётности — за неделю, за день и в день платежа, под ваш режим.</div>
-        </div>
-      </div>
-      <button class="btn btn--primary" id="remindBtn">🔔 Включить напоминания</button>
-    </section>
-
     <!-- PRO: вердикт словами -->
     <section class="card pro-section" id="proVerdict">
       <div class="card__title">
@@ -127,6 +118,22 @@
         <span class="pro-badge" id="scenBadge">PRO</span>
       </div>
       <div id="scenContent"></div>
+    </section>
+    </div>
+
+    <!-- ===== Вкладка «Сроки» ===== -->
+    <div class="tab-panel" id="tab-dates" hidden>
+
+    <!-- Напоминания о сроках (Pro, ведёт в бота) -->
+    <section class="card remind-cta">
+      <div class="remind-cta__head">
+        <span class="remind-cta__icon">🔔</span>
+        <div>
+          <div class="remind-cta__title">Не пропустите налоговые сроки <span class="pro-badge">PRO</span></div>
+          <div class="remind-cta__text">Бот напомнит об авансах, взносах и отчётности — за неделю, за день и в день платежа, под ваш режим.</div>
+        </div>
+      </div>
+      <button class="btn btn--primary" id="remindBtn">🔔 Включить напоминания</button>
     </section>
 
     <!-- PRO: налоговый календарь -->
@@ -155,6 +162,20 @@
       </div>
       <div id="declContent"></div>
     </section>
+    </div>
+
+    <!-- ===== Вкладка «Профиль» ===== -->
+    <div class="tab-panel" id="tab-profile" hidden>
+
+    <section class="card" id="profileStatus"><!-- статус Pro рендерится из app.js --></section>
+
+    <section class="card">
+      <div class="card__title">О сервисе</div>
+      <p class="about-text">«Налоговый навигатор ИП 2026» — сравнение 6 налоговых режимов с учётом реформы НДС 2026. Цифры расчёта остаются на вашем устройстве и не отправляются на сервер.</p>
+      <p class="about-text">Вопросы и поддержка: <a class="about-link" href="mailto:filimonov.filimonov05@mail.ru">filimonov.filimonov05@mail.ru</a></p>
+      <p class="about-text"><a class="about-link" href="#" id="privacyLink2">Политика конфиденциальности</a> · <a class="about-link" href="#" id="ofertaLink">Оферта</a></p>
+    </section>
+    </div>
 
     <p class="disclaimer">
       Расчёт упрощён, носит справочный характер и не является индивидуальной налоговой консультацией.
@@ -164,6 +185,22 @@
 
     <div class="bottom-space"></div>
   </div>
+
+  <!-- Нижняя таб-навигация -->
+  <nav class="tabbar" aria-label="Разделы приложения">
+    <button class="tabbar__btn is-active" type="button" data-tab="calc" aria-selected="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M9 7.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span>Расчёт</span>
+    </button>
+    <button class="tabbar__btn" type="button" data-tab="dates" aria-selected="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17" stroke="currentColor" stroke-width="1.8"/><path d="M8 3v3M16 3v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 14h.01M12 14h.01M16 14h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span>Сроки</span>
+    </button>
+    <button class="tabbar__btn" type="button" data-tab="profile" aria-selected="false">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c.8-3.4 3.6-5.2 7-5.2s6.2 1.8 7 5.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Профиль</span>
+    </button>
+  </nav>
 
   <!-- Pro paywall (модалка) -->
   <div class="sheet" id="paywall" hidden>
@@ -192,6 +229,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=29"></script>
+  <script type="module" src="app.js?v=31"></script>
 </body>
 </html>

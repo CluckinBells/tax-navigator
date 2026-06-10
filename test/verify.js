@@ -6,7 +6,7 @@ import { buildUsnIncomeDeclaration } from '../shared/declaration.js';
 import { reminderStage, dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { computeSetAside } from '../shared/setaside.js';
 import { normalizeSource, recordStart, formatSourceStats } from '../shared/sources.js';
-import { createPending, markPaid, isPaid, markClaimed, isClaimed } from '../shared/webpro.js';
+import { createPending, markPaid, isPaid, markClaimed, isClaimed, issueClaimCode, findTokenByClaimCode, clearClaimCode } from '../shared/webpro.js';
 
 let passed = 0, failed = 0;
 function check(name, actual, expected) {
@@ -220,6 +220,23 @@ check('claimedBy = строка userId', wp.tok1.claimedBy, '702308050');
 const wpOrig = {};
 createPending(wpOrig, 'z');
 check('createPending не мутирует вход', Object.keys(wpOrig).length, 0);
+
+// Одноразовые коды активации в Telegram (claim) — токен в ссылки не попадает.
+let wpc = createPending({}, 'tokA', { paymentId: 'p1' });
+check('код НЕ выдаётся на неоплаченный токен', issueClaimCode(wpc, 'tokA', 'c1', 100).tokA.claimCode === undefined, true);
+wpc = markPaid(wpc, 'tokA', 'p1', '2026-06-10');
+wpc = issueClaimCode(wpc, 'tokA', 'c1', 1000);
+check('код выдан на оплаченный токен', wpc.tokA.claimCode, 'c1');
+check('поиск по действующему коду находит токен', findTokenByClaimCode(wpc, 'c1', 500), 'tokA');
+check('просроченный код не находится', findTokenByClaimCode(wpc, 'c1', 1001), null);
+check('несуществующий код не находится', findTokenByClaimCode(wpc, 'cX', 500), null);
+check('повторная выдача кода заменяет старый', issueClaimCode(wpc, 'tokA', 'c2', 2000).tokA.claimCode, 'c2');
+wpc = markClaimed(wpc, 'tokA', 1);
+check('после claim код перестаёт работать', findTokenByClaimCode(wpc, 'c1', 500), null);
+check('код НЕ выдаётся на уже привязанный токен', issueClaimCode(wpc, 'tokA', 'c3', 9000).tokA.claimCode, 'c1');
+wpc = clearClaimCode(wpc, 'tokA');
+check('clearClaimCode убирает код из записи', wpc.tokA.claimCode === undefined, true);
+check('clearClaimCode сохраняет остальные поля', wpc.tokA.paymentId, 'p1');
 
 // --- Эталон 12: корректность после аудита движка (взносы в базе УСН Д-Р, граница НДС, патент-взносы) ---
 console.log('\nЭталон 12 — корректность после аудита:');

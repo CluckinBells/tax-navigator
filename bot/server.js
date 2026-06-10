@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 import { nextDeadline } from '../shared/engine.js';
 import { dueReminders, daysLeftPhrase, formatDateRu } from '../shared/reminders.js';
 import { recordStart, formatSourceStats } from '../shared/sources.js';
-import { createPending, markPaid, isPaid, markClaimed, isClaimed } from '../shared/webpro.js';
+import { createPending, markPaid, isPaid, markClaimed, isClaimed, issueClaimCode, findTokenByClaimCode, clearClaimCode } from '../shared/webpro.js';
 
 // .trim() — на случай, если в переменную окружения (например, на Amvera при вставке)
 // попал лишний пробел/таб/перенос строки. Без этого Telegram отклоняет web_app-кнопку
@@ -78,8 +78,9 @@ const INITDATA_TTL_SEC = Number(process.env.INITDATA_TTL_SEC || 86400);
 // Анти-абуз веб-оплаты: не больше N созданий платежа с одного IP за окно (бережёт ЮKassa и web-pro.json).
 const WEBPAY_MAX = Number(process.env.WEBPAY_MAX || 20);
 const WEBPAY_WINDOW_MS = Number(process.env.WEBPAY_WINDOW_MS || 10 * 60 * 1000);
-// Сколько дней claim-ссылка валидна после оплаты (ограничивает срок жизни утёкшего токена).
-const CLAIM_TTL_DAYS = Number(process.env.CLAIM_TTL_DAYS || 14);
+// Срок жизни одноразового кода активации Pro в Telegram (claim): выдаётся по клику на сайте
+// (/web/claim-code) и гаснет после использования. Долгоживущий токен покупки в ссылки не попадает.
+const CLAIM_CODE_TTL_MS = Number(process.env.CLAIM_CODE_TTL_MS || 15 * 60 * 1000);
 
 // Отказоустойчивость: один плохой апдейт/промис не должен ронять процесс (иначе краш-петля —
 // Telegram переотправляет тот же апдейт снова и снова).
@@ -206,7 +207,9 @@ async function yookassaCreatePayment({ amount, email, token }) {
     const payload = {
       amount: { value: amount, currency: 'RUB' },
       capture: true,
-      confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=${token}` },
+      // Возврат с оплаты помечаем флагом ?paid=1 — сам токен в URL НЕ кладём (он уже
+      // сохранён сайтом в localStorage до редиректа; см. webapp/app.js startWebPayment).
+      confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=1` },
       description: 'Налоговый навигатор Pro (разовый доступ)',
       metadata: { kind: 'web_pro', token },
     };
@@ -380,7 +383,8 @@ const server = http.createServer(async (req, res) => {
     if (!yk.ok) { console.log('[web-pay] ЮKassa ошибка:', yk.error); return json(res, 502, { error: 'не удалось создать платёж' }); }
     webPro = createPending(webPro, token, { paymentId: yk.id, amount: PRO_PRICE_RUB * 100, createdAt: isoToday() });
     saveWebPro();
-    return json(res, 200, { confirmationUrl: yk.confirmationUrl });
+    // Токен отдаём в ОТВЕТЕ (сайт кладёт его в localStorage до редиректа) — не в return_url.
+    return json(res, 200, { confirmationUrl: yk.confirmationUrl, token });
   }
 
   // 2c) Сайт спрашивает: «эта покупка (token) оплачена?» — источник правды о веб-Pro.
@@ -399,6 +403,19 @@ const server = http.createServer(async (req, res) => {
       }
     }
     return json(res, 200, { isPro: false });
+  }
+
+  // 2d) Сайт просит одноразовый код активации Pro в Telegram (claim).
+  // Код живёт CLAIM_CODE_TTL_MS и гаснет после использования — долгоживущий токен в ссылку не попадает.
+  if (req.url === '/web/claim-code' && req.method === 'POST') {
+    if (webPayRateLimited(clientIp(req))) return json(res, 429, { error: 'слишком много запросов, попробуйте позже' });
+    const token = String(body.token || '').trim();
+    if (!isPaid(webPro, token)) return json(res, 404, { error: 'оплата не найдена' });
+    if (isClaimed(webPro, token)) return json(res, 409, { error: 'уже привязано к Telegram' });
+    const code = crypto.randomBytes(16).toString('hex'); // 128 бит — одноразовый код активации
+    webPro = issueClaimCode(webPro, token, code, Date.now() + CLAIM_CODE_TTL_MS);
+    saveWebPro();
+    return json(res, 200, { claimCode: code, ttlSec: Math.round(CLAIM_CODE_TTL_MS / 1000) });
   }
 
   // 3) Вебхук Telegram (обновления бота)
@@ -463,7 +480,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-10-gh12' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-10-gh14' });
 });
 
 // --- Главное меню бота ---
@@ -719,26 +736,27 @@ async function handleUpdate(update) {
 
     // Deep-link «claim_<token>» — перенос веб-оплаты в Telegram: проверяем оплату на сервере → выдаём Pro.
     if (payload.startsWith('claim_')) {
-      const token = payload.slice('claim_'.length);
-      const rec = webPro[token];
-      // claim-ссылка действительна ограниченное время после оплаты (ограничивает срок жизни утёкшего токена).
-      const claimCutoff = new Date(Date.now() - CLAIM_TTL_DAYS * 864e5).toISOString().slice(0, 10);
-      const claimFresh = !!rec && (rec.paidAt || rec.createdAt || '0000-00-00') >= claimCutoff;
+      // Перенос веб-оплаты в Telegram по ОДНОРАЗОВОМУ коду (выдан сайтом через /web/claim-code,
+      // живёт ~15 минут, гаснет после использования). Сам токен покупки в ссылках не ходит.
+      const code = payload.slice('claim_'.length);
+      const token = findTokenByClaimCode(webPro, code, Date.now());
       let text;
       if (isPro(fromId)) {
+        if (token) { webPro = clearClaimCode(webPro, token); saveWebPro(); } // гасим код, чтобы не висел до TTL
         text = '✅ У вас уже есть Pro в Telegram — доступ навсегда. Откройте калькулятор, все функции активны.';
-      } else if (isPaid(webPro, token) && !isClaimed(webPro, token) && claimFresh) {
+      } else if (token) {
+        const rec = webPro[token];
         grantPro(fromId);
-        webPro = markClaimed(webPro, token, fromId); saveWebPro();
+        webPro = markClaimed(webPro, token, fromId);
+        webPro = clearClaimCode(webPro, token);
+        saveWebPro();
         // Привязываем платёж ЮKassa к пользователю — чтобы возврат по веб-оплате снял Pro.
         rememberPayment(rec?.paymentId, fromId);
         text = '🎉 Pro активирован в Telegram! Спасибо за покупку. Все Pro-функции открыты — нажмите «Открыть калькулятор».';
-      } else if (isPaid(webPro, token) && isClaimed(webPro, token)) {
-        text = 'Эта покупка уже привязана к аккаунту Telegram. Если это ошибка — напишите нам.';
-      } else if (isPaid(webPro, token) && !claimFresh) {
-        text = 'Ссылка активации устарела. Напишите нам (filimonov.filimonov05@mail.ru) — поможем перенести Pro в Telegram.';
       } else {
-        text = 'Не удалось подтвердить покупку по ссылке (возможно, оплата ещё обрабатывается — попробуйте через минуту). Если вы оплатили на сайте — напишите нам, поможем.';
+        text = 'Код активации не найден или истёк (он действует 15 минут и работает один раз). ' +
+          'Откройте сайт, где оплачивали Pro, и нажмите «Открыть Pro в Telegram» ещё раз — пришлём свежую ссылку. ' +
+          'Не получается — напишите: filimonov.filimonov05@mail.ru';
       }
       await tg('sendMessage', { chat_id: chatId, text, reply_markup: { inline_keyboard: [
         [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],

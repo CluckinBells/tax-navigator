@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=29';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=29';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=29';
-import { computeSetAside } from '../shared/setaside.js?v=29';
-import { formatDateRu } from '../shared/reminders.js?v=29';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=31';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=31';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=31';
+import { computeSetAside } from '../shared/setaside.js?v=31';
+import { formatDateRu } from '../shared/reminders.js?v=31';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -63,17 +63,23 @@ const WEB_TOKEN_KEY = 'tn_web_token';
 const isTelegram = () => !!(tg && tg.initData);
 let webToken = '';
 
-// Проверка веб-Pro: токен из ?paid=... или localStorage → сервер /web/pro (он сам сверяет с ЮKassa по API).
+// Проверка веб-Pro: токен живёт ТОЛЬКО в localStorage (кладётся до редиректа на оплату) →
+// сервер /web/pro (он сам сверяет с ЮKassa по API). Возврат с оплаты помечается флагом ?paid=1 —
+// токен в URL больше не передаётся (старый формат ?paid=<токен> поддержан для совместимости).
 async function verifyWebPro() {
   if (!BACKEND_READY) return;
   const params = new URLSearchParams(location.search);
-  const fromUrl = (params.get('paid') || '').trim();
-  if (fromUrl) { try { localStorage.setItem(WEB_TOKEN_KEY, fromUrl); } catch (_) {} } // сразу сохраняем токен возврата
-  if (params.has('paid')) history.replaceState(null, '', location.pathname + location.hash); // прячем токен из адреса
-  const token = fromUrl || (localStorage.getItem(WEB_TOKEN_KEY) || '').trim();
-  if (!token) return;
-  if (fromUrl) showWebStatus('⏳ Подтверждаем оплату, секунду…');
-  const attempts = fromUrl ? 8 : 1;
+  const returned = params.has('paid'); // вернулись со страницы оплаты ЮKassa
+  const legacy = (params.get('paid') || '').trim();
+  if (legacy.length > 8) { try { localStorage.setItem(WEB_TOKEN_KEY, legacy); } catch (_) {} } // старые ссылки ?paid=<токен>
+  if (returned) history.replaceState(null, '', location.pathname + location.hash); // чистим адрес
+  const token = (localStorage.getItem(WEB_TOKEN_KEY) || '').trim() || (legacy.length > 8 ? legacy : '');
+  if (!token) {
+    if (returned) showWebStatus('Не нашли данные оплаты в этом браузере. Если деньги списались — напишите нам: filimonov.filimonov05@mail.ru');
+    return;
+  }
+  if (returned) showWebStatus('⏳ Подтверждаем оплату, секунду…');
+  const attempts = returned ? 8 : 1;
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${BACKEND_URL}/web/pro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
@@ -81,13 +87,13 @@ async function verifyWebPro() {
       if (data.isPro) {
         webToken = token;
         if (!isPro) { isPro = true; applyProLock(); recalc(); }
-        showWebClaim(token, !!fromUrl);
+        showWebClaim(token, returned);
         return;
       }
     } catch (_) {}
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2500));
   }
-  if (fromUrl) showWebStatus('Оплата обрабатывается. Если деньги списались — обновите страницу через минуту. Не помогло — напишите нам: filimonov.filimonov05@mail.ru');
+  if (returned) showWebStatus('Оплата обрабатывается. Если деньги списались — обновите страницу через минуту. Не помогло — напишите нам: filimonov.filimonov05@mail.ru');
 }
 
 // Запуск веб-оплаты: сразу создаём платёж ЮKassa → редирект на страницу оплаты (без поля email).
@@ -99,15 +105,43 @@ async function startWebPayment() {
     const res = await fetch(`${BACKEND_URL}/web/create-payment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.confirmationUrl) { say('Не удалось создать оплату: ' + (data.error || res.status) + '. Попробуйте позже.'); return; }
+    // Токен покупки сохраняем ДО редиректа — в URL он больше не ходит (возврат придёт с ?paid=1).
+    if (data.token) { try { localStorage.setItem(WEB_TOKEN_KEY, data.token); } catch (_) {} }
     window.location.href = data.confirmationUrl; // страница оплаты ЮKassa (тот же браузер, без Telegram)
   } catch (e) { say('Ошибка связи с сервером оплаты: ' + (e?.message || '') + '.'); }
 }
 
 // Пост-оплатный экран «Pro активен» + кнопка перенести доступ в Telegram (claim).
+// Токен в ссылку НЕ кладём: по клику запрашиваем у сервера ОДНОРАЗОВЫЙ код активации
+// (живёт ~15 минут, гаснет после использования) — утёкшая/пересланная ссылка бесполезна.
 function showWebClaim(token, fresh) {
   const el = $('webClaim'); if (!el) return;
   const link = $('webClaimLink');
-  if (link) { link.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(token)}`; link.style.display = ''; }
+  if (link) {
+    link.style.display = '';
+    link.onclick = async (e) => {
+      e.preventDefault();
+      if (link.dataset.busy === '1') return; // защита от двойного клика (иначе второй код перезапишет первый → мёртвая ссылка)
+      link.dataset.busy = '1';
+      const old = link.textContent;
+      link.textContent = '⏳ Готовим ссылку…';
+      const reset = () => { link.textContent = old; link.dataset.busy = ''; };
+      try {
+        const res = await fetch(`${BACKEND_URL}/web/claim-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+        const data = await res.json().catch(() => ({}));
+        if (data.claimCode) {
+          window.location.href = `https://t.me/${BOT_USERNAME}?start=claim_${encodeURIComponent(data.claimCode)}`;
+          return; // busy не снимаем — уходим в Telegram
+        }
+        if (res.status === 409) { showWebStatus('Эта покупка уже привязана к Telegram — откройте бота @' + BOT_USERNAME + '.'); reset(); return; }
+        alert('Не удалось подготовить ссылку (' + (data.error || res.status) + '). Попробуйте ещё раз.');
+        reset();
+      } catch (_) {
+        alert('Ошибка связи с сервером. Попробуйте ещё раз через минуту.');
+        reset();
+      }
+    };
+  }
   const txt = el.querySelector('.pay-done__text'); if (txt) txt.style.display = '';
   const title = $('webClaimTitle');
   if (title) title.textContent = fresh ? '🎉 Оплата прошла! Pro ваш навсегда' : '✅ Pro активен на этом устройстве';
@@ -766,6 +800,15 @@ function applyProLock() {
       if (!$(target).innerHTML) $(target).innerHTML = '<div style="height:120px"></div>';
     }
   });
+
+  // Карточка статуса во вкладке «Профиль».
+  const ps = $('profileStatus');
+  if (ps) {
+    ps.innerHTML = isPro
+      ? `<div class="pstatus"><span class="pstatus__icon">💎</span><div><div class="pstatus__title">Pro активен — навсегда</div><div class="pstatus__text">Открыто всё: разбор, сценарии, календарь, «подушка», декларация и напоминания. Обновления ставок 2026 включены.</div></div></div>`
+      : `<div class="pstatus"><span class="pstatus__icon">🔓</span><div><div class="pstatus__title">Бесплатная версия</div><div class="pstatus__text">Сравнение режимов и экономия — бесплатно. Pro добавляет разбор, сценарии, календарь с напоминаниями, «подушку» и черновик декларации.</div></div></div><button class="btn btn--primary" id="profileBuyBtn">Открыть Pro — <s class="price-old">1990 ₽</s> 990 ₽ навсегда</button>`;
+    $('profileBuyBtn')?.addEventListener('click', openPaywall);
+  }
 }
 
 // --- Paywall и оплата ---
@@ -868,6 +911,32 @@ $('privacyLink')?.addEventListener('click', (e) => {
   e.preventDefault();
   if (tg?.openLink) tg.openLink(PRIVACY_URL);
   else window.open(PRIVACY_URL, '_blank');
+});
+
+// --- Нижняя таб-навигация (Расчёт / Сроки / Профиль) ---
+function switchTab(name) {
+  ['calc', 'dates', 'profile'].forEach((t) => { const p = $(`tab-${t}`); if (p) p.hidden = t !== name; });
+  document.querySelectorAll('.tabbar__btn').forEach((b) => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  window.scrollTo({ top: 0 });
+  tg?.HapticFeedback?.selectionChanged?.();
+}
+document.querySelectorAll('.tabbar__btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+// Ссылки «Политика» и «Оферта» во вкладке «Профиль» — во внешний браузер.
+$('privacyLink2')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (tg?.openLink) tg.openLink(PRIVACY_URL);
+  else window.open(PRIVACY_URL, '_blank');
+});
+$('ofertaLink')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const u = 'https://navnalog.ru/oferta.html';
+  if (tg?.openLink) tg.openLink(u);
+  else window.open(u, '_blank');
 });
 
 // --- Старт ---
