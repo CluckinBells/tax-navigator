@@ -53,7 +53,7 @@ img, svg { display: block; }
   display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--brand); margin-bottom: 12px;
 }
-.grad { background: linear-gradient(120deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grad { background: linear-gradient(120deg, var(--brand), var(--brand-2), var(--brand)); background-size: 220% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gradShimmer 6s linear infinite; }
 
 /* ===== Кнопки ===== */
 .btn {
@@ -377,4 +377,45 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
   .anim .section__head, .anim .problem__col, .anim .calc__layout, .anim .feature, .anim .plan, .anim .faq__item, .anim .cta-final__box,
   .anim .hero__content > *, .anim .hero__preview { opacity: 1 !important; translate: none !important; animation: none !important; }
   .hero__glow, .anim .rcard__bars .bar__track i, .rcard--float { animation: none !important; }
+}
+
+/* ===== WOW-слой ===== */
+/* Шиммер ключевого слова в hero */
+@keyframes gradShimmer { to { background-position: 220% center; } }
+
+/* Spotlight-бордер: подсветка края карточки следует за курсором (десктоп) */
+.feature, .problem__col, .plan { position: relative; }
+.feature::after, .problem__col::after, .plan:not(.plan--featured)::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+  background: radial-gradient(240px circle at var(--mx, -200px) var(--my, -200px), rgba(124, 114, 255, .7), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  opacity: 0; transition: opacity .25s;
+}
+.feature:hover::after, .problem__col:hover::after, .plan:not(.plan--featured):hover::after { opacity: 1; }
+
+/* Вращающийся градиент-бордер на тарифе Pro — тянет взгляд к конверсии */
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.plan--featured::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; pointer-events: none; z-index: 2;
+  background: conic-gradient(from var(--angle), var(--brand), var(--brand-2), var(--win), var(--brand-2), var(--brand));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: borderSpin 5s linear infinite;
+}
+@keyframes borderSpin { to { --angle: 360deg; } }
+
+/* Блик по primary-кнопкам при наведении */
+.btn--primary { position: relative; overflow: hidden; }
+.btn--primary::after {
+  content: ''; position: absolute; top: 0; left: -150%; width: 55%; height: 100%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .4), transparent);
+  transform: skewX(-18deg);
+}
+.btn--primary:hover::after { animation: btnShine .7s ease; }
+@keyframes btnShine { to { left: 160%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .grad, .plan--featured::before, .btn--primary:hover::after { animation: none !important; }
+  .feature::after, .problem__col::after, .plan::after { display: none !important; }
 }
