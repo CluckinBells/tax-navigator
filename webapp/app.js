@@ -323,7 +323,8 @@ function goToReminders() {
   const fam = lastResult && lastResult.best ? REM_FAMILY_BY_REGIME[lastResult.best.id] : null;
   const param = fam ? `rem_${fam}` : 'reminders';
   const url = `https://t.me/${BOT_USERNAME}?start=${param}`;
-  if (tg?.openTelegramLink) tg.openTelegramLink(url);
+  // openTelegramLink существует и вне Telegram, но там молчит → гейт по isTelegram()
+  if (isTelegram() && tg?.openTelegramLink) tg.openTelegramLink(url);
   else window.open(url, '_blank');
 }
 $('remindBtn').addEventListener('click', goToReminders);
@@ -355,7 +356,7 @@ $('shareBtn').addEventListener('click', () => {
   tg?.HapticFeedback?.impactOccurred?.('light');
   const text = buildShareText(lastResult);
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_LINK)}&text=${encodeURIComponent(text)}`;
-  if (tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
+  if (isTelegram() && tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
   else if (navigator.share) navigator.share({ text: `${text} ${SHARE_LINK}` }).catch(() => {});
   else window.open(shareUrl, '_blank');
 });
@@ -948,6 +949,14 @@ $('ofertaLink')?.addEventListener('click', (e) => {
   e.preventDefault();
   const u = 'https://navnalog.ru/oferta.html';
   if (tg?.openLink) tg.openLink(u);
+  else window.open(u, '_blank');
+});
+// Канал проекта — t.me открываем внутри Telegram, в браузере — новой вкладкой.
+// Гейт по isTelegram(): openTelegramLink существует и вне Telegram, но там молчит.
+$('channelLink')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const u = 'https://t.me/navnalog';
+  if (isTelegram() && tg?.openTelegramLink) tg.openTelegramLink(u);
   else window.open(u, '_blank');
 });
 

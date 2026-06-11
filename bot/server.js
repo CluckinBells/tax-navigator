@@ -480,7 +480,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-10-gh14' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-11-gh15' });
 });
 
 // --- Главное меню бота ---
@@ -489,12 +489,16 @@ const MENU_TEXT =
   'Сравните 6 налоговых режимов с учётом реформы НДС и узнайте, сколько можно сэкономить. Базовый расчёт — бесплатно.\n\n' +
   'Выберите раздел: 👇';
 
+// Канал проекта — разборы, сроки, новости (env-переопределяемо; .trim() от случайных пробелов в панели).
+const CHANNEL_URL = (process.env.CHANNEL_URL || 'https://t.me/navnalog').trim();
+
 const MENU_KEYBOARD = {
   inline_keyboard: [
     [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
     [{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽ навсегда`, callback_data: 'buy_pro' }],
     [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Что даёт Pro', callback_data: 'pro' }],
     [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }, { text: '🔔 Напоминания', callback_data: 'reminders' }],
+    [{ text: '📰 Канал: разборы и новости', url: CHANNEL_URL }],
     [{ text: '🛡️ О сервисе и контакты', callback_data: 'about' }],
   ],
 };
@@ -584,6 +588,7 @@ const SECTIONS = {
     '🛡️ <b>О сервисе</b>\n\n' +
     '«Налоговый навигатор ИП 2026» — сервис для сравнения налоговых режимов ИП с учётом реформы НДС 2026.\n\n' +
     'Расчёт носит справочный характер и не заменяет консультацию бухгалтера.\n\n' +
+    'Канал с разборами и новостями: @navnalog\n\n' +
     'По вопросам и обращениям: filimonov.filimonov05@mail.ru\n\n' +
     'Политика конфиденциальности: ' + PRIVACY_URL,
 };
