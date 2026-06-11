@@ -136,6 +136,8 @@ img, svg { display: block; }
 .rcard__big { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
 .rcard__sum { font-size: 32px; font-weight: 800; color: var(--brand-ink); margin-top: 4px; }
 .rcard__sum span { font-size: 15px; font-weight: 600; color: var(--ink-mute); }
+/* Счётчик-числа (.count) НЕ должны ловить стиль вложенного span — наследуем стиль родителя */
+.rcard__sum .count, .rcard__save .count { font: inherit; color: inherit; }
 .rcard__save {
   display: inline-flex; align-items: center; gap: 7px; margin-top: 14px;
   background: var(--win-soft); color: var(--win); border: 1px solid var(--win-line);
