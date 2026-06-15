@@ -480,7 +480,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-11-gh15' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh16' });
 });
 
 // --- Главное меню бота ---
@@ -495,8 +495,7 @@ const CHANNEL_URL = (process.env.CHANNEL_URL || 'https://t.me/navnalog').trim();
 const MENU_KEYBOARD = {
   inline_keyboard: [
     [{ text: '🧮 Открыть калькулятор', web_app: { url: WEBAPP_URL } }],
-    [{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽ навсегда`, callback_data: 'buy_pro' }],
-    [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Что даёт Pro', callback_data: 'pro' }],
+    [{ text: '❓ Как это работает', callback_data: 'how' }, { text: '💎 Тариф Pro', callback_data: 'pro' }],
     [{ text: '📅 Налоговые сроки 2026', callback_data: 'dates' }, { text: '🔔 Напоминания', callback_data: 'reminders' }],
     [{ text: '📰 Канал: разборы и новости', url: CHANNEL_URL }],
     [{ text: '🛡️ О сервисе и контакты', callback_data: 'about' }],
@@ -561,7 +560,8 @@ const SECTIONS = {
     'Возле каждого поля есть подсказка «?» — если что-то непонятно, нажмите её. Заполнять нужно всего 2 главных поля: выручку и расходы.\n\n' +
     'Расчёт идёт прямо на вашем устройстве — цифры никуда не передаются.',
   pro:
-    `💎 <b>Что даёт Pro</b> — ${PRICE_LABEL}, разово, навсегда\n\n` +
+    '💎 <b>Тариф Pro</b>\n\n' +
+    'Базовый расчёт и сравнение 6 режимов — бесплатно, навсегда. Pro добавляет всё, что превращает калькулятор в личного консультанта:\n\n' +
     '🧭 Личная рекомендация словами: что выбрать и почему\n' +
     '📊 Разбивка нагрузки с графиками (налог, взносы, НДС)\n' +
     '📈 Сценарии роста и график налоговой кривой\n' +
@@ -571,7 +571,7 @@ const SECTIONS = {
     '📅 Налоговый календарь под ваш режим\n' +
     '💰 «Сколько отложить»: налоговая подушка под ваш режим\n' +
     '🔔 Напоминания о сроках в Telegram под ваш режим\n\n' +
-    'Оформить можно прямо в калькуляторе — откройте его и нажмите на любой Pro-раздел.',
+    `Стоимость — ${PRICE_LABEL}. Разовая оплата, доступ навсегда: без подписки и продлений. Доступ открывается сразу после оплаты.`,
   dates:
     '📅 <b>Ключевые налоговые сроки 2026</b> (для ИП)\n\n' +
     '<b>УСН:</b>\n' +
@@ -701,7 +701,13 @@ async function handleUpdate(update) {
       const kb = dataKey === 'dates'
         ? { inline_keyboard: [[{ text: '🔔 Включить напоминания', callback_data: 'reminders' }], [{ text: '← Назад в меню', callback_data: 'menu' }]] }
         : dataKey === 'pro'
-        ? { inline_keyboard: [[{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽`, callback_data: 'buy_pro' }], [{ text: '← Назад в меню', callback_data: 'menu' }]] }
+        ? { inline_keyboard: [
+            // Кнопку покупки показываем только тем, у кого Pro ещё нет (иначе — тоже навязывание).
+            isPro(userId)
+              ? [{ text: '✅ Pro у вас уже есть — открыть', web_app: { url: WEBAPP_URL } }]
+              : [{ text: `💳 Купить Pro — ${PRO_PRICE_RUB} ₽`, callback_data: 'buy_pro' }],
+            [{ text: '← Назад в меню', callback_data: 'menu' }],
+          ] }
         : BACK_KEYBOARD;
       await tg('editMessageText', { chat_id: chatId, message_id: msgId, text: SECTIONS[dataKey], parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
     }
