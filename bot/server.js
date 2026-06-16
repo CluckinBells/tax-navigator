@@ -43,11 +43,7 @@ const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
 const PROVIDER_TOKEN = (process.env.PROVIDER_TOKEN || '').trim();
 // Цена Pro в рублях. Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
 const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 299);
-// «Обычная» цена-якорь для зачёркивания в тексте (промо «990 вместо 1990»). Только показ.
-const PRO_PRICE_ORIGINAL_RUB = Number(process.env.PRO_PRICE_ORIGINAL_RUB || 1990);
-const PRICE_LABEL = PRO_PRICE_ORIGINAL_RUB > PRO_PRICE_RUB
-  ? `${PRO_PRICE_RUB} ₽ (вместо ${PRO_PRICE_ORIGINAL_RUB} ₽, цена запуска)`
-  : `${PRO_PRICE_RUB} ₽`;
+const PRICE_LABEL = `${PRO_PRICE_RUB} ₽`;
 // Ставка НДС для чека 54-ФЗ: 1 = без НДС (для ИП на УСН/НПД). См. ЛК ЮKassa.
 const VAT_CODE = Number(process.env.VAT_CODE || 1);
 // Секрет аутентификации вебхука ЮKassa (refund). ЮKassa должна слать на URL с ?s=<этот секрет>.
@@ -480,7 +476,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh17' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh18' });
 });
 
 // --- Главное меню бота ---
