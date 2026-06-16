@@ -42,7 +42,7 @@ const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
 // Это НЕ секретный ключ из ЛК ЮKassa — отдельный токен для бота, выдаётся при привязке магазина.
 const PROVIDER_TOKEN = (process.env.PROVIDER_TOKEN || '').trim();
 // Цена Pro в рублях. Pro — РАЗОВАЯ покупка, доступ навсегда (без подписки/продлений).
-const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 990);
+const PRO_PRICE_RUB = Number(process.env.PRO_PRICE_RUB || 299);
 // «Обычная» цена-якорь для зачёркивания в тексте (промо «990 вместо 1990»). Только показ.
 const PRO_PRICE_ORIGINAL_RUB = Number(process.env.PRO_PRICE_ORIGINAL_RUB || 1990);
 const PRICE_LABEL = PRO_PRICE_ORIGINAL_RUB > PRO_PRICE_RUB
@@ -480,7 +480,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh16' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh17' });
 });
 
 // --- Главное меню бота ---

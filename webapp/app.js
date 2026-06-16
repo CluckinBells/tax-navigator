@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=39';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=39';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=39';
-import { computeSetAside } from '../shared/setaside.js?v=39';
-import { formatDateRu } from '../shared/reminders.js?v=39';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=40';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=40';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=40';
+import { computeSetAside } from '../shared/setaside.js?v=40';
+import { formatDateRu } from '../shared/reminders.js?v=40';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -1054,7 +1054,7 @@ function renderProfile() {
       ps.innerHTML = `<div class="pstatus"><span class="pstatus__icon">💎</span><div><div class="pstatus__title">Pro активен — навсегда</div><div class="pstatus__text">Открыто всё: разбор, сценарии, календарь, «подушка», декларация и напоминания. Обновления ставок 2026 включены.</div></div></div>`;
     } else {
       const save = res && res.savings > 0 ? ` и заберите свои <b>${formatMoney(res.savings)}</b> экономии в год` : '';
-      ps.innerHTML = `<div class="pstatus"><span class="pstatus__icon">🔓</span><div><div class="pstatus__title">Бесплатная версия</div><div class="pstatus__text">Сравнение режимов и экономия — бесплатно. Откройте Pro${save}: разбор, сценарии, календарь с напоминаниями, «подушка» и черновик декларации.</div></div></div><button class="btn btn--primary" type="button" data-paction="buy">Открыть Pro — <s class="price-old">1990 ₽</s> 990 ₽ навсегда</button>`;
+      ps.innerHTML = `<div class="pstatus"><span class="pstatus__icon">🔓</span><div><div class="pstatus__title">Бесплатная версия</div><div class="pstatus__text">Сравнение режимов и экономия — бесплатно. Откройте Pro${save}: разбор, сценарии, календарь с напоминаниями, «подушка» и черновик декларации.</div></div></div><button class="btn btn--primary" type="button" data-paction="buy">Открыть Pro — <s class="price-old">1990 ₽</s> 299 ₽ навсегда</button>`;
     }
   }
   const pr = $('profileRegime');
