@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Оплата Pro — Налоговый навигатор</title>
+  <meta name="theme-color" content="#0a0b14" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236366f1'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <!-- Яндекс.Метрика (страница только веб) — для атрибуции веб-оплаты из рекламы. -->
+  <script>
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<e.scripts.length;j++){if(e.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=109693939','ym');
+    ym(109693939,'init',{webvisor:false,clickmap:false});
+  </script>
+  <style>
+    :root{--bg:#0a0b14;--c1:#6366f1;--c2:#a855f7;--ink:#f1f3fb;--hint:#8b90b5;--win:#34d399}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);
+      font-family:Manrope,"Segoe UI",system-ui,-apple-system,sans-serif;padding:24px}
+    .card{max-width:440px;width:100%;text-align:center;background:#14172a;border:1px solid rgba(255,255,255,.07);
+      border-radius:24px;padding:40px 28px;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+    .mark{width:56px;height:56px;border-radius:15px;background:linear-gradient(135deg,var(--c1),var(--c2));
+      display:grid;place-items:center;margin:0 auto 20px}
+    .mark svg{width:30px;height:30px}
+    h1{font-size:22px;margin:0 0 10px;font-weight:800}
+    p{color:var(--hint);font-size:15px;line-height:1.5;margin:0 0 16px}
+    .spin{width:38px;height:38px;border:3px solid rgba(255,255,255,.14);border-top-color:var(--c1);
+      border-radius:50%;margin:6px auto 0;animation:s 1s linear infinite}
+    @keyframes s{to{transform:rotate(360deg)}}
+    .btn{display:block;margin-top:12px;padding:16px 18px;border-radius:14px;font-weight:800;font-size:16px;
+      text-decoration:none;color:#fff;background:linear-gradient(135deg,var(--c1),var(--c2));border:none;cursor:pointer}
+    .btn--ghost{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--ink);font-weight:600;font-size:14px}
+    .win{color:var(--win)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 8-9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 7h4v4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1 id="title">Готовим оплату…</h1>
+    <p id="msg">Секунду, перенаправляем на безопасную оплату ЮKassa.</p>
+    <div class="spin" id="spin"></div>
+    <div id="actions"></div>
+  </div>
+
+  <script>
+    var BACKEND = 'https://nalogovik-cluckin.waw0.amvera.tech';
+    var BOT = 'taxes_navigator_bot';
+    var KEY = 'tn_web_token';
+    var $ = function (id) { return document.getElementById(id); };
+    var q = new URLSearchParams(location.search);
+    function goal(g) { try { if (window.ym) ym(109693939, 'reachGoal', g); } catch (_) {} }
+    function show(title, msg, spin) {
+      $('title').textContent = title;
+      $('msg').innerHTML = msg;
+      $('spin').style.display = spin ? '' : 'none';
+    }
+    function actions(html) { $('actions').innerHTML = html; }
+
+    // Нет ?paid → создаём платёж и сразу уводим на ЮKassa (без загрузки калькулятора).
+    async function startPay() {
+      show('Готовим оплату…', 'Секунду, перенаправляем на безопасную оплату ЮKassa.', true);
+      try {
+        var r = await fetch(BACKEND + '/web/create-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        var d = await r.json().catch(function () { return {}; });
+        if (!r.ok || !d.confirmationUrl) {
+          show('Не удалось создать оплату', 'Попробуйте ещё раз через минуту.', false);
+          actions('<a class="btn" href="pay.html">Повторить</a><a class="btn btn--ghost" href="/">На главную</a>');
+          return;
+        }
+        try { localStorage.setItem(KEY, d.token); } catch (_) {}
+        goal('web_checkout_start');
+        location.href = d.confirmationUrl;
+      } catch (e) {
+        show('Ошибка связи', 'Проверьте интернет и попробуйте снова.', false);
+        actions('<a class="btn" href="pay.html">Повторить</a><a class="btn btn--ghost" href="/">На главную</a>');
+      }
+    }
+
+    // Возврат с ЮKassa (?paid) → подтверждаем оплату и даём доступ в Telegram.
+    async function confirmPay() {
+      show('Проверяем оплату…', 'Это занимает несколько секунд.', true);
+      var token = (localStorage.getItem(KEY) || '').trim();
+      if (!token) {
+        show('Не нашли данные оплаты', 'Если деньги списались — напишите нам: filimonov.filimonov05@mail.ru', false);
+        actions('<a class="btn btn--ghost" href="/">На главную</a>');
+        return;
+      }
+      for (var i = 0; i < 8; i++) {
+        try {
+          var r = await fetch(BACKEND + '/web/pro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) });
+          var d = await r.json().catch(function () { return {}; });
+          if (d.isPro) { goal('web_pro_paid'); return success(token); }
+        } catch (_) {}
+        if (i < 7) await new Promise(function (res) { setTimeout(res, 2500); });
+      }
+      show('Оплата обрабатывается', 'Если деньги списались — обновите страницу через минуту.', false);
+      actions('<a class="btn" href="pay.html?paid=1">Обновить</a>');
+    }
+
+    // Оплачено: получаем одноразовый claim-код и даём ссылку в бота (доступ выдастся автоматически).
+    async function success(token) {
+      show('Оплачено ✅', 'Открываем доступ к Pro в Telegram…', true);
+      var link = 'https://t.me/' + BOT;
+      try {
+        var r = await fetch(BACKEND + '/web/claim-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token }) });
+        var d = await r.json().catch(function () { return {}; });
+        if (d.claimCode) link = 'https://t.me/' + BOT + '?start=claim_' + encodeURIComponent(d.claimCode);
+      } catch (_) {}
+      show('<span class="win">Оплачено ✅</span>', 'Pro куплен. Открой калькулятор в Telegram — доступ выдастся автоматически.', false);
+      actions('<a class="btn" href="' + link + '">🚀 Открыть калькулятор в Telegram</a><a class="btn btn--ghost" href="webapp/index.html">или открыть на сайте</a>');
+      setTimeout(function () { location.href = link; }, 1500); // мягкий авто-переход
+    }
+
+    (q.has('paid') ? confirmPay : startPay)();
+  </script>
+</body>
+</html>

@@ -205,7 +205,7 @@ async function yookassaCreatePayment({ amount, email, token }) {
       capture: true,
       // Возврат с оплаты помечаем флагом ?paid=1 — сам токен в URL НЕ кладём (он уже
       // сохранён сайтом в localStorage до редиректа; см. webapp/app.js startWebPayment).
-      confirmation: { type: 'redirect', return_url: `${SITE_URL}/webapp/?paid=1` },
+      confirmation: { type: 'redirect', return_url: `${SITE_URL}/pay.html?paid=1` },
       description: 'Налоговый навигатор Pro (разовый доступ)',
       metadata: { kind: 'web_pro', token },
     };
@@ -476,7 +476,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
-  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-15-gh18' });
+  json(res, 200, { service: 'tax-navigator-bot', ok: true, build: '2026-06-17-gh19' });
 });
 
 // --- Главное меню бота ---
