@@ -7,7 +7,15 @@
   <meta name="theme-color" content="#0a0c15" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M3 17l5-5 4 4 8-9' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 7h4v4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="styles.css?v=41" />
+  <!-- Яндекс.Метрика — ТОЛЬКО в веб-режиме (не в Telegram), для атрибуции веб-оплаты из рекламы.
+       webvisor/clickmap выкл. → ввод калькулятора НЕ записывается (цифры остаются на устройстве). -->
+  <script>
+    if (!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)) {
+      (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<e.scripts.length;j++){if(e.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=109693939','ym');
+      ym(109693939,'init',{webvisor:false,clickmap:false,trackLinks:true,accurateTrackBounce:true});
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css?v=42" />
 </head>
 <body>
   <div class="app">
@@ -236,6 +244,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=41"></script>
+  <script type="module" src="app.js?v=42"></script>
 </body>
 </html>

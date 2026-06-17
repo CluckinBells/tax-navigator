@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=41';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=41';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=41';
-import { computeSetAside } from '../shared/setaside.js?v=41';
-import { formatDateRu } from '../shared/reminders.js?v=41';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=42';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=42';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=42';
+import { computeSetAside } from '../shared/setaside.js?v=42';
+import { formatDateRu } from '../shared/reminders.js?v=42';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -88,6 +88,7 @@ async function verifyWebPro() {
       if (data.isPro) {
         webToken = token;
         if (!isPro) { isPro = true; applyProLock(); recalc(); }
+        if (returned && window.ym) ym(109693939, 'reachGoal', 'web_pro_paid'); // покупка Pro картой на сайте (реклама → реальные деньги)
         showWebClaim(token, returned);
         return;
       }
@@ -108,6 +109,7 @@ async function startWebPayment() {
     if (!res.ok || !data.confirmationUrl) { say('Не удалось создать оплату: ' + (data.error || res.status) + '. Попробуйте позже.'); return; }
     // Токен покупки сохраняем ДО редиректа — в URL он больше не ходит (возврат придёт с ?paid=1).
     if (data.token) { try { localStorage.setItem(WEB_TOKEN_KEY, data.token); } catch (_) {} }
+    if (window.ym) ym(109693939, 'reachGoal', 'web_checkout_start'); // дошёл до оплаты — промежуточная цель для оптимизации Директа
     window.location.href = data.confirmationUrl; // страница оплаты ЮKassa (тот же браузер, без Telegram)
   } catch (e) { say('Ошибка связи с сервером оплаты: ' + (e?.message || '') + '.'); }
 }
