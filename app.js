@@ -1,6 +1,6 @@
 // Живой демо-калькулятор на лендинге (бесплатный режим).
-import { calculateAll } from './shared/engine.js?v=42';
-import { formatMoney, formatPercent, parseMoney } from './shared/format.js?v=42';
+import { calculateAll } from './shared/engine.js?v=43';
+import { formatMoney, formatPercent, parseMoney } from './shared/format.js?v=43';
 
 const $ = (id) => document.getElementById(id);
 
@@ -134,12 +134,12 @@ function recalc() {
       els.overpayNum.textContent = formatMoney(res.savings);
       els.prolockSavings.textContent = formatMoney(res.savings);
       if (els.prolockOverpay) els.prolockOverpay.textContent = formatMoney(res.savings);
-      if (els.prolockHead) els.prolockHead.innerHTML = 'Заберите свои <b>' + formatMoney(res.savings) + '</b> — пошаговый план в Telegram';
+      if (els.prolockHead) els.prolockHead.innerHTML = 'Заберите свои <b>' + formatMoney(res.savings) + '</b> — весь план в Pro';
     } else {
       els.resultHook.style.display = 'none';
       els.prolockSavings.textContent = 'эту сумму';
       if (els.prolockOverpay) els.prolockOverpay.textContent = 'вашей переплаты';
-      if (els.prolockHead) els.prolockHead.textContent = 'Полный план под ваш режим — в Telegram';
+      if (els.prolockHead) els.prolockHead.textContent = 'Полный план под ваш режим';
     }
     // Спокойно, ниже хука: выгодный режим и его нагрузка.
     const rate = res.effectiveRate != null ? ` · ${formatPercent(res.effectiveRate)} от выручки` : '';
@@ -148,7 +148,7 @@ function recalc() {
     els.resultHook.style.display = 'none';
     els.resultBest.textContent = 'Нет доступных режимов — проверьте параметры.';
     els.prolockSavings.textContent = 'эту сумму';
-    if (els.prolockHead) els.prolockHead.textContent = 'Полный план под ваш режим — в Telegram';
+    if (els.prolockHead) els.prolockHead.textContent = 'Полный план под ваш режим';
     els.bestPill.style.display = 'none';
   }
 
