@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=45';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=45';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=45';
-import { computeSetAside } from '../shared/setaside.js?v=45';
-import { formatDateRu } from '../shared/reminders.js?v=45';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=46';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=46';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=46';
+import { computeSetAside } from '../shared/setaside.js?v=46';
+import { formatDateRu } from '../shared/reminders.js?v=46';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);
@@ -55,8 +55,6 @@ if (tg) {
 const BOT_USERNAME = 'taxes_navigator_bot';
 const REM_FAMILY_BY_REGIME = { usn6: 'usn', usn15: 'usn', psn: 'psn', ausn8: 'ausn', ausn20: 'ausn' };
 const FAMILY_LABEL = { usn: 'УСН', psn: 'Патент', ausn: 'АУСН' };
-// Виральный шеринг: ссылка ведёт сразу в бота с меткой источника (её считает /srcstats).
-const SHARE_LINK = `https://t.me/${BOT_USERNAME}?start=share`;
 
 // --- Веб-режим: оплата Pro на сайте (без Telegram) ---
 // В обычном браузере (не в Telegram) tg.initData пуст → веб-оплата ЮKassa + токен в localStorage.
@@ -297,7 +295,6 @@ function recalc() {
   renderBest(res);
   renderCompare(res);
   renderRemindCta(res);
-  renderShareCta(res);
   if (isPro) {
     renderVerdict(res, input);
     renderDetail(res);
@@ -331,37 +328,7 @@ function goToReminders() {
 }
 $('remindBtn').addEventListener('click', goToReminders);
 
-// --- Виральная карточка: поделиться расчётом (бесплатно, цикл ИП→ИП) ---
-function buildShareText(res) {
-  if (res && res.savings > 0) {
-    return `Сравнил 6 налоговых режимов ИП на 2026. На невыгодном режиме переплата — до ${formatMoney(res.savings)} в год 😳 Посчитай свой за минуту 👇`;
-  }
-  return 'Сравнил 6 налоговых режимов ИП на 2026 за минуту. Посчитай и ты, где выгоднее 👇';
-}
-
-function renderShareCta(res) {
-  const sec = $('shareCta');
-  if (!sec) return;
-  sec.hidden = false;
-  const title = $('shareCtaTitle');
-  const text = $('shareCtaText');
-  if (res && res.savings > 0) {
-    title.textContent = `Можно экономить до ${formatMoney(res.savings)} в год`;
-    text.textContent = 'Поделись расчётом — знакомому ИП это тоже сэкономит деньги.';
-  } else {
-    title.textContent = 'Поделись калькулятором';
-    text.textContent = 'Отправь знакомому ИП — пусть проверит свой режим за минуту.';
-  }
-}
-
-$('shareBtn').addEventListener('click', () => {
-  tg?.HapticFeedback?.impactOccurred?.('light');
-  const text = buildShareText(lastResult);
-  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(SHARE_LINK)}&text=${encodeURIComponent(text)}`;
-  if (isTelegram() && tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
-  else if (navigator.share) navigator.share({ text: `${text} ${SHARE_LINK}` }).catch(() => {});
-  else window.open(shareUrl, '_blank');
-});
+// (Функция «поделиться расчётом» убрана по решению владельца.)
 
 function renderBest(res) {
   if (res.best) {
@@ -781,6 +748,8 @@ function exportDeclaration() {
 
 // --- Управление Pro-замком ---
 function applyProLock() {
+  const hb = $('headBuyPro');
+  if (hb) hb.hidden = isPro; // у кого Pro уже есть — кнопку покупки в шапке прячем
   const sections = {
     proVerdict: 'verdictContent',
     proDetail: 'detailContent',
@@ -817,6 +786,8 @@ function openPaywall() {
 }
 function closePaywall() { $('paywall').hidden = true; }
 $('paywall').querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closePaywall));
+// Явная кнопка «Купить Pro» в шапке — открывает пейволл (видна всем, у кого Pro ещё нет).
+$('headBuyPro')?.addEventListener('click', openPaywall);
 
 $('buyProBtn').addEventListener('click', async () => {
   // Показываем сообщение И всплывашкой, И видимым текстом в окне (showAlert иногда молчит).
