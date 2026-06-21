@@ -1,11 +1,11 @@
 // Telegram Mini App — Налоговый навигатор ИП 2026.
 // Использует общий движок расчёта (тот же, что и на лендинге).
 
-import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=46';
-import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=46';
-import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=46';
-import { computeSetAside } from '../shared/setaside.js?v=46';
-import { formatDateRu } from '../shared/reminders.js?v=46';
+import { calculateAll, breakevenSweep, getTaxCalendar } from '../shared/engine.js?v=47';
+import { formatMoney, formatPercent, formatShort, parseMoney } from '../shared/format.js?v=47';
+import { buildUsnIncomeDeclaration } from '../shared/declaration.js?v=47';
+import { computeSetAside } from '../shared/setaside.js?v=47';
+import { formatDateRu } from '../shared/reminders.js?v=47';
 
 const tg = window.Telegram?.WebApp;
 const $ = (id) => document.getElementById(id);

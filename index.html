@@ -30,7 +30,14 @@
   <!-- Шрифт грузится не блокируя рендер: страница работает даже без интернета (важно для Telegram) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=46" />
+  <link rel="stylesheet" href="styles.css?v=47" />
+  <style>
+    /* «Вертушка» слова в заголовке hero (без библиотек, с уважением к prefers-reduced-motion). */
+    .rotator{display:inline-block;height:1.2em;overflow:hidden;vertical-align:bottom}
+    .rotator__reel{display:flex;flex-direction:column;transition:transform .6s cubic-bezier(.2,1.25,.3,1)}
+    .rotator__word{display:block;height:1.2em;line-height:1.2;white-space:nowrap}
+    @media (prefers-reduced-motion: reduce){ .rotator__reel{transition:none !important;transform:none !important} }
+  </style>
 
   <!-- Yandex.Metrika counter -->
   <script type="text/javascript">
@@ -125,7 +132,13 @@
       <div class="hero__content">
         <span class="badge">🔥 Обновлено под реформу НДС 2026</span>
         <h1 class="hero__title">
-          Узнайте, на каком налоговом режиме ИП <span class="grad">переплачивает</span> — за 1 минуту
+          Налоги ИП — это <span class="rotator" id="heroRotator" aria-label="просто, выгодно, понятно, по закону"><span class="rotator__reel">
+            <span class="rotator__word grad">просто</span>
+            <span class="rotator__word grad">выгодно</span>
+            <span class="rotator__word grad">понятно</span>
+            <span class="rotator__word grad">по закону</span>
+            <span class="rotator__word grad" aria-hidden="true">просто</span>
+          </span></span>
         </h1>
         <p class="hero__subtitle">
           Калькулятор сравнивает 6 режимов — НПД, УСН «Доходы», УСН «Доходы-Расходы», патент и АУСН — и показывает,
@@ -480,12 +493,29 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=46"></script>
+  <script type="module" src="app.js?v=47"></script>
 
   <!-- Ненавязчивая плашка для тех, кто уже купил Pro (лендинг и Mini App на одном домене → общий localStorage). -->
   <a id="proReturn" href="webapp/index.html" hidden
      style="position:fixed;right:14px;bottom:14px;z-index:60;background:#6366f1;color:#fff;font-weight:700;font-size:14px;line-height:1;padding:11px 16px;border-radius:999px;box-shadow:0 10px 26px -8px rgba(99,102,241,.65);text-decoration:none;">💎 Открыть Pro</a>
   <script>try{if(localStorage.getItem('tn_web_token')){document.getElementById('proReturn').hidden=false;}}catch(e){}</script>
+
+  <!-- «Вертушка» слова в hero (без библиотек, с reduced-motion) -->
+  <script>
+  (function(){
+    var rot=document.getElementById('heroRotator'); if(!rot) return;
+    var reel=rot.querySelector('.rotator__reel');
+    var real=reel.querySelectorAll('.rotator__word').length-1; // последнее слово — дубль первого для бесшовной петли
+    if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; // тихий режим: первое слово статично
+    var i=0, STEP=1.2; // em, = высоте слова
+    setInterval(function(){
+      i++;
+      reel.style.transition='transform .6s cubic-bezier(.2,1.25,.3,1)';
+      reel.style.transform='translateY(-'+(i*STEP)+'em)';
+      if(i===real){ setTimeout(function(){ reel.style.transition='none'; reel.style.transform='translateY(0)'; i=0; },620); }
+    },2000);
+  })();
+  </script>
 
   <!-- Анимации появления + счётчик чисел (премиум-тонко, без библиотек, с уважением к prefers-reduced-motion) -->
   <script>
