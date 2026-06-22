@@ -30,7 +30,7 @@
   <!-- Шрифт грузится не блокируя рендер: страница работает даже без интернета (важно для Telegram) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=48" />
+  <link rel="stylesheet" href="styles.css?v=49" />
   <style>
     /* «Вертушка» слова в заголовке hero (без библиотек, с уважением к prefers-reduced-motion). */
     .rotator{display:inline-block;height:1.2em;overflow:hidden;vertical-align:bottom}
@@ -68,6 +68,40 @@
     .mock__row--win b{color:#34d399}
     @media (max-width:860px){.showcase__grid{grid-template-columns:1fr;gap:36px}.showcase__bg{right:-6%}}
     @media (prefers-reduced-motion:reduce){.showcase__bg,.showcase__card{transform:none !important}}
+
+    /* Бенто-сетка возможностей (порт 21st features-8) — карточки разной ширины вместо одинаковой сетки. */
+    .fbento{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+    .fcard{position:relative;background:#14172a;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;overflow:hidden;transition:.2s}
+    .fcard:hover{border-color:rgba(255,255,255,.16);transform:translateY(-2px)}
+    .fcard--3{grid-column:span 3}
+    .fcard--2{grid-column:span 2}
+    .fcard__ico{width:42px;height:42px;border-radius:12px;background:rgba(99,102,241,.14);display:grid;place-items:center;font-size:20px;margin-bottom:14px}
+    .fcard h3{font-size:18px;font-weight:800;color:#f1f3fb;margin-bottom:7px;letter-spacing:-.01em}
+    .fcard p{font-size:14.5px;color:#aab2cf;line-height:1.55}
+    .fcard__tag{position:absolute;top:20px;right:20px;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:#c7d2fe;background:rgba(99,102,241,.16);border:1px solid rgba(99,102,241,.3);padding:3px 9px;border-radius:999px}
+    .fcard__bars{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+    .fcard__bar{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;font-size:12px;color:#8b90b5;font-variant-numeric:tabular-nums}
+    .fcard__bar .track{height:7px;background:#232843;border-radius:99px;overflow:hidden}
+    .fcard__bar .track i{display:block;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:99px}
+    .fcard__bar.win{color:#34d399}.fcard__bar.win .track i{background:linear-gradient(90deg,#34d399,#10b981)}
+    .fcard__big{display:flex;align-items:baseline;gap:8px;margin-top:16px;flex-wrap:wrap}
+    .fcard__big b{font-size:28px;font-weight:800;color:#f1f3fb;letter-spacing:-.02em}
+    .fcard__chip{font-size:11.5px;font-weight:700;color:#34d399;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.25);padding:4px 10px;border-radius:999px}
+    @media(max-width:880px){.fbento{grid-template-columns:repeat(2,1fr)}.fcard--3,.fcard--2{grid-column:span 1}}
+    @media(max-width:560px){.fbento{grid-template-columns:1fr}}
+
+    /* Число с поцифровой blur-анимацией (порт 21st animated-blur-number) — меняются только изменившиеся цифры. */
+    .an-root{--an-spring:linear(0,0.028 2.5%,0.0995 5%,0.198 7.5%,0.3106 10%,0.4272 12.5%,0.5405 15%,0.6454 17.5%,0.7387 20%,0.819 22.5%,0.8856 25%,0.9391 27.5%,0.9803 30%,1.0107 32.5%,1.0317 35%,1.045 37.5%,1.052 40%,1.0543 42.5%,1.053 45%,1.0493 47.5%,1.044 50%,1.0379 52.5%,1.0316 55%,1.0254 57.5%,1.0197 60%,1.0146 62.5%,1.0102 65%,1.0065 67.5%,1.0035 70%,1.0012 72.5%,0.9995 75%,0.9984 77.5%,0.9976 80%,0.9972 82.5%,0.9971 85%,0.9971 87.5%,0.9973 90%,0.9976 92.5%,0.9979 95%,0.9983 97.5%,1);--an-dist:0.55em;--an-dur:520ms;--an-blur:14px;display:inline-flex;align-items:baseline;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .an-slot{position:relative;display:inline-block}
+    .an-layer{display:inline-block;will-change:transform,opacity,filter}
+    .an-out{position:absolute;inset:0}
+    .an-in{animation:an-slide-in var(--an-dur) var(--an-spring) both,an-resolve var(--an-dur) cubic-bezier(.22,1,.36,1) both}
+    .an-out{animation:an-slide-out var(--an-dur) cubic-bezier(.4,0,1,1) both,an-dissolve var(--an-dur) cubic-bezier(.4,0,1,1) both}
+    @keyframes an-slide-in{from{transform:translateY(calc(var(--an-dir,1)*var(--an-dist)))}to{transform:translateY(0)}}
+    @keyframes an-slide-out{from{transform:translateY(0)}to{transform:translateY(calc(var(--an-dir,1)*var(--an-dist)*-1))}}
+    @keyframes an-resolve{from{opacity:0;filter:blur(var(--an-blur))}to{opacity:1;filter:blur(0)}}
+    @keyframes an-dissolve{from{opacity:1;filter:blur(0)}to{opacity:0;filter:blur(var(--an-blur))}}
+    @media (prefers-reduced-motion:reduce){.an-in{animation:none}.an-out{animation:none;display:none}}
   </style>
 
   <!-- Yandex.Metrika counter -->
@@ -349,45 +383,51 @@
       <div class="section__head">
         <h2>Не просто калькулятор, а навигатор по налогам</h2>
       </div>
-      <div class="features__grid">
-        <article class="feature">
-          <div class="feature__ico">⚖️</div>
+      <div class="fbento">
+        <article class="fcard fcard--3">
+          <div class="fcard__ico">⚖️</div>
           <h3>6 режимов в одном экране</h3>
-          <p>НПД, УСН «Доходы» 6%, УСН «Доходы-Расходы» 15%, ПСН и АУСН (8% и 20%) — сразу, с подсветкой лучшего.</p>
+          <p>НПД, УСН «Доходы» 6%, УСН «Доходы-Расходы» 15%, ПСН и АУСН — выстраиваются от дешёвого к дорогому, выгодный подсвечен.</p>
+          <div class="fcard__bars">
+            <div class="fcard__bar win"><span class="t">ПСН</span><span class="track"><i style="width:18%"></i></span><span>59 390 ₽</span></div>
+            <div class="fcard__bar"><span class="t">УСН 6%</span><span class="track"><i style="width:55%"></i></span><span>300 000 ₽</span></div>
+            <div class="fcard__bar"><span class="t">УСН 15%</span><span class="track"><i style="width:100%"></i></span><span>600 000 ₽</span></div>
+          </div>
         </article>
-        <article class="feature">
-          <div class="feature__ico">🧾</div>
-          <h3>Реформа НДС 2026</h3>
-          <p>Учитывает новый порог НДС 20 млн ₽ и льготные ставки 5% / 7% для УСН — то, что ломает старые расчёты.</p>
+        <article class="fcard fcard--3">
+          <div class="fcard__ico">🧾</div>
+          <h3>Реформа НДС 2026 — уже учтена</h3>
+          <p>Новый порог НДС и льготные ставки для УСН — то, что ломает старые калькуляторы из поиска. У нас посчитано по ФЗ-425.</p>
+          <div class="fcard__big"><b>20 млн ₽</b><span class="fcard__chip">порог НДС</span><span class="fcard__chip">ставки 5% / 7%</span></div>
         </article>
-        <article class="feature feature--pro">
-          <span class="feature__tag">PRO</span>
-          <div class="feature__ico">🔔</div>
+        <article class="fcard fcard--2">
+          <span class="fcard__tag">PRO</span>
+          <div class="fcard__ico">🔔</div>
           <h3>Напоминания о сроках</h3>
-          <p>Бот сам напомнит об авансах, взносах и отчётности — за неделю, за день и в день платежа, под ваш режим. Чтобы не платить пени.</p>
+          <p>Бот напомнит об авансах, взносах и отчётности под твой режим — чтобы не платить пени.</p>
         </article>
-        <article class="feature feature--pro">
-          <span class="feature__tag">PRO</span>
-          <div class="feature__ico">📈</div>
+        <article class="fcard fcard--2">
+          <span class="fcard__tag">PRO</span>
+          <div class="fcard__ico">📈</div>
           <h3>Сценарии роста</h3>
-          <p>Сравните «сейчас / через год / через 2» и заранее увидьте, на каком обороте выгодно сменить режим.</p>
+          <p>«Сейчас / через год / через 2» — увидь заранее, на каком обороте выгодно сменить режим.</p>
         </article>
-        <article class="feature feature--pro">
-          <span class="feature__tag">PRO</span>
-          <div class="feature__ico">🎯</div>
+        <article class="fcard fcard--2">
+          <span class="fcard__tag">PRO</span>
+          <div class="fcard__ico">🎯</div>
           <h3>Точки перелома</h3>
-          <p>Сервис находит уровень выручки, где один режим становится дороже другого, и подсказывает момент перехода.</p>
+          <p>Уровень выручки, где один режим становится дороже другого, — и момент перехода.</p>
         </article>
-        <article class="feature feature--pro">
-          <span class="feature__tag">PRO</span>
-          <div class="feature__ico">📄</div>
-          <h3>PDF-отчёт</h3>
-          <p>Готовый расчёт со всеми цифрами — можно сохранить, отправить бухгалтеру или приложить к решению.</p>
+        <article class="fcard fcard--3">
+          <span class="fcard__tag">PRO</span>
+          <div class="fcard__ico">📄</div>
+          <h3>PDF-отчёт и декларация</h3>
+          <p>Готовый расчёт и черновик декларации УСН — сохранить, отправить бухгалтеру или приложить к решению.</p>
         </article>
-        <article class="feature">
-          <div class="feature__ico">⚡</div>
+        <article class="fcard fcard--3">
+          <div class="fcard__ico">⚡</div>
           <h3>Прямо в Telegram</h3>
-          <p>Ничего не нужно устанавливать. Открыли мини-приложение, посчитали, закрыли. Всегда под рукой.</p>
+          <p>Ничего не нужно устанавливать. Открыл мини-приложение, посчитал, закрыл. Всегда под рукой.</p>
         </article>
       </div>
     </div>
@@ -560,7 +600,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=48"></script>
+  <script type="module" src="app.js?v=49"></script>
 
   <!-- Ненавязчивая плашка для тех, кто уже купил Pro (лендинг и Mini App на одном домене → общий localStorage). -->
   <a id="proReturn" href="webapp/index.html" hidden
@@ -602,6 +642,42 @@
     window.addEventListener('scroll',onScroll,{passive:true});
     window.addEventListener('resize',onScroll);
     update();
+  })();
+  </script>
+
+  <!-- Поцифровая blur-анимация числа переплаты (порт 21st animated-blur-number; обёртка над #overpayNum без правки app.js) -->
+  <script>
+  (function(){
+    var host=document.getElementById('overpayNum'); if(!host) return;
+    var reduce=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var prev=(host.textContent||'').trim();
+    function esc(c){return c==='&'?'&amp;':c==='<'?'&lt;':c==='>'?'&gt;':c;}
+    function render(str,animate){
+      var oldC=prev.split(''), chars=str.split(''), n=chars.length, dir=str.length>=prev.length?1:-1, html='<span class="an-root">';
+      for(var i=0;i<n;i++){
+        var ch=chars[i], posR=n-1-i, oldCh=oldC[oldC.length-1-posR];
+        var changed=animate && !reduce && oldCh!==undefined && oldCh!==ch;
+        var disp=ch===' '?'&#160;':esc(ch);
+        if(changed){
+          var oc=oldCh===' '?'&#160;':esc(oldCh);
+          html+='<span class="an-slot" style="--an-dir:'+dir+'"><span class="an-layer an-in">'+disp+'</span><span class="an-layer an-out">'+oc+'</span></span>';
+        } else {
+          html+='<span class="an-slot"><span class="an-layer">'+disp+'</span></span>';
+        }
+      }
+      html+='</span>';
+      host.innerHTML=html;
+      host.querySelectorAll('.an-out').forEach(function(o){ var rm=function(){ if(o.parentNode) o.remove(); }; o.addEventListener('animationend',rm); setTimeout(rm,900); });
+      prev=str;
+    }
+    render(prev,false);
+    // app.js при пересчёте делает host.textContent='…' → наша .an-root исчезает → перерисовываем с анимацией; собственные мутации внутри .an-root игнорируем.
+    new MutationObserver(function(){
+      if(host.querySelector('.an-root')) return;
+      var t=(host.textContent||'').trim();
+      if(!t || t===prev) return;
+      render(t,true);
+    }).observe(host,{childList:true,subtree:true});
   })();
   </script>
 
