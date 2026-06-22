@@ -30,13 +30,44 @@
   <!-- Шрифт грузится не блокируя рендер: страница работает даже без интернета (важно для Telegram) -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=47" />
+  <link rel="stylesheet" href="styles.css?v=48" />
   <style>
     /* «Вертушка» слова в заголовке hero (без библиотек, с уважением к prefers-reduced-motion). */
     .rotator{display:inline-block;height:1.2em;overflow:hidden;vertical-align:bottom}
     .rotator__reel{display:flex;flex-direction:column;transition:transform .6s cubic-bezier(.2,1.25,.3,1)}
     .rotator__word{display:block;height:1.2em;line-height:1.2;white-space:nowrap}
     @media (prefers-reduced-motion: reduce){ .rotator__reel{transition:none !important;transform:none !important} }
+
+    /* Секция с продуктовым мокапом (порт 21st section-with-mockup на ванильный CSS). */
+    .showcase{position:relative;padding:60px 0 84px;overflow:hidden}
+    .showcase__grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+    .showcase__text{max-width:520px}
+    .showcase__text h2{font-size:clamp(27px,3.4vw,40px);font-weight:800;line-height:1.12;letter-spacing:-.02em;margin-bottom:14px}
+    .showcase__text p{color:#9aa1c0;font-size:16.5px;line-height:1.65}
+    .showcase__media{position:relative;width:100%;max-width:430px;margin:0 auto}
+    .showcase__bg{position:absolute;z-index:0;top:6%;right:-14%;width:84%;height:92%;background:linear-gradient(160deg,#191d35,#0b0d18);border-radius:26px;filter:blur(2px);opacity:.85;will-change:transform}
+    .showcase__card{position:relative;z-index:1;background:rgba(255,255,255,.045);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,.1);border-radius:26px;padding:18px;box-shadow:0 50px 100px -50px rgba(0,0,0,.85);will-change:transform}
+    .showcase__hr{position:absolute;left:0;bottom:0;width:100%;height:1px;background:radial-gradient(50% 50% at 50% 50%,rgba(255,255,255,.22),transparent)}
+    .mock__head{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+    .mock__mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#6366f1,#a855f7);display:grid;place-items:center;flex:none}
+    .mock__title{display:flex;flex-direction:column;line-height:1.25}
+    .mock__title b{font-size:13px;color:#f1f3fb}
+    .mock__title span{font-size:10.5px;color:#8b90b5}
+    .mock__best{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:16px;padding:14px;margin-bottom:12px}
+    .mock__best-label{font-size:10.5px;color:#8b90b5}
+    .mock__best-name{font-size:16px;font-weight:800;color:#f1f3fb;margin-top:2px}
+    .mock__best-total{font-size:22px;font-weight:800;color:#34d399;margin-top:4px}
+    .mock__best-total span{font-size:11px;color:#8b90b5;font-weight:500}
+    .mock__best-save{font-size:11px;color:#34d399;margin-top:4px;font-weight:600}
+    .mock__rows{display:flex;flex-direction:column;gap:8px}
+    .mock__row{display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:9px;font-size:11px;color:#aab2cf}
+    .mock__row b{color:#f1f3fb;font-weight:600;font-size:11px}
+    .mock__bar{height:7px;background:#232843;border-radius:99px;overflow:hidden}
+    .mock__bar i{display:block;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:99px}
+    .mock__row--win .mock__bar i{background:linear-gradient(90deg,#34d399,#10b981)}
+    .mock__row--win b{color:#34d399}
+    @media (max-width:860px){.showcase__grid{grid-template-columns:1fr;gap:36px}.showcase__bg{right:-6%}}
+    @media (prefers-reduced-motion:reduce){.showcase__bg,.showcase__card{transform:none !important}}
   </style>
 
   <!-- Yandex.Metrika counter -->
@@ -362,6 +393,42 @@
     </div>
   </section>
 
+  <!-- ===== Showcase: продуктовый мокап (порт 21st section-with-mockup) ===== -->
+  <section class="showcase" id="showcase">
+    <div class="container">
+      <div class="showcase__grid">
+        <div class="showcase__text">
+          <h2>Не просто цифра, а план — прямо в Telegram</h2>
+          <p>Pro показывает, из чего складывается налог, когда выгодно сменить режим при росте, сколько откладывать и какие сроки нельзя пропустить. Всё под твои цифры, в приложении, которое всегда под рукой.</p>
+          <a href="https://t.me/taxes_navigator_bot?start=site" target="_blank" rel="noopener" class="btn btn--primary btn--lg" style="margin-top:22px;">Открыть в Telegram</a>
+        </div>
+        <div class="showcase__media" id="showcaseMedia">
+          <div class="showcase__bg" aria-hidden="true"></div>
+          <div class="showcase__card" aria-hidden="true">
+            <div class="mock">
+              <div class="mock__head">
+                <span class="mock__mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 8-9" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 7h4v4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <div class="mock__title"><b>Налоговый навигатор</b><span>Сравнение режимов · 2026</span></div>
+              </div>
+              <div class="mock__best">
+                <div class="mock__best-label">Ваш выгодный режим</div>
+                <div class="mock__best-name">ПСН (патент)</div>
+                <div class="mock__best-total">59 390 ₽ <span>налогов в год</span></div>
+                <div class="mock__best-save">↓ −540 610 ₽ против худшего режима</div>
+              </div>
+              <div class="mock__rows">
+                <div class="mock__row mock__row--win"><span>ПСН</span><div class="mock__bar"><i style="width:18%"></i></div><b>59 390 ₽</b></div>
+                <div class="mock__row"><span>УСН 6%</span><div class="mock__bar"><i style="width:55%"></i></div><b>300 000 ₽</b></div>
+                <div class="mock__row"><span>УСН 15%</span><div class="mock__bar"><i style="width:100%"></i></div><b>600 000 ₽</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="showcase__hr" aria-hidden="true"></div>
+  </section>
+
   <!-- ===== Тарифы ===== -->
   <section class="section pricing" id="pricing">
     <div class="container">
@@ -493,7 +560,7 @@
     </div>
   </footer>
 
-  <script type="module" src="app.js?v=47"></script>
+  <script type="module" src="app.js?v=48"></script>
 
   <!-- Ненавязчивая плашка для тех, кто уже купил Pro (лендинг и Mini App на одном домене → общий localStorage). -->
   <a id="proReturn" href="webapp/index.html" hidden
@@ -514,6 +581,27 @@
       reel.style.transform='translateY(-'+(i*STEP)+'em)';
       if(i===real){ setTimeout(function(){ reel.style.transition='none'; reel.style.transform='translateY(0)'; i=0; },620); }
     },2000);
+  })();
+  </script>
+
+  <!-- Параллакс мокапа в showcase (порт 21st, без библиотек, robust + reduced-motion) -->
+  <script>
+  (function(){
+    var media=document.getElementById('showcaseMedia'); if(!media) return;
+    if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var card=media.querySelector('.showcase__card'), bg=media.querySelector('.showcase__bg'), ticking=false;
+    function update(){
+      ticking=false;
+      var r=media.getBoundingClientRect(), vh=window.innerHeight||800;
+      if(r.bottom<0||r.top>vh) return;
+      var p=((vh-r.top)/(vh+r.height))-0.5;
+      card.style.transform='translateY('+(p*26).toFixed(1)+'px)';
+      bg.style.transform='translateY('+(p*-26).toFixed(1)+'px)';
+    }
+    function onScroll(){ if(!ticking){ ticking=true; requestAnimationFrame(update); } }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    window.addEventListener('resize',onScroll);
+    update();
   })();
   </script>
 
